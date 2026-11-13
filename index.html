@@ -212,6 +212,24 @@ h4.mine{font-family:var(--display);font-weight:400;font-size:18px;margin:18px 0 
 .recap-prev img{max-width:100%;max-height:62vh;display:block;margin:0 auto;box-shadow:4px 4px 0 var(--navy);-webkit-touch-callout:default}
 input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:999px;padding:9px 16px;background:var(--white)}
 
+/* 小排程 */
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+.days button{border:var(--line);border-radius:12px;background:var(--white);padding:5px 0 4px;line-height:1.15;font-family:var(--latin);font-weight:700;font-size:17px;position:relative}
+.days button small{display:block;font-family:var(--body);font-weight:500;font-size:11px;opacity:.75}
+.days button.on{background:var(--navy);color:#fff}
+.days button.k::after{content:"";position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--coral);border:1.5px solid var(--navy)}
+.dayc{margin-bottom:14px;padding:12px 14px}
+.dayc.today{background:var(--ice)}
+.dayc h3{margin:0 0 2px;font-family:var(--display);font-weight:400;font-size:19px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dayc h3 .chip{font-family:var(--body);font-size:11px;padding:0 8px;box-shadow:none}
+.prow{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:8px 0;border-top:1.5px dashed rgba(23,58,122,.3)}
+.prow:first-of-type{border-top:0}
+.prow img,.prow .noimg{width:52px;height:52px;flex:none;border:var(--line);border-radius:12px;object-fit:cover;background:var(--white)}
+.prow b{display:block;font-size:15px;line-height:1.3}
+.prow small{opacity:.7;font-size:12px}
+.prow.done b{text-decoration:line-through;opacity:.6}
+.prow .tick{margin-left:auto;flex:none;font-family:var(--display);color:var(--coral);font-size:15px}
+
 /* 底部导航 */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--cream);border-top:var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:center}
 nav div{display:flex;width:100%;max-width:480px}
@@ -324,11 +342,15 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
 
   <!-- 地点 -->
   <section class="view" id="v-list">
+    <div class="seg" style="margin:0 0 4px"><button data-act="lmode" data-v="list" class="on">想去池</button><button data-act="lmode" data-v="plan">小排程</button></div>
+    <div id="planPane" hidden></div>
+    <div id="listPane">
     <h2 class="sec">想去池</h2>
     <input class="line" id="q" type="search" placeholder="搜地点、街区，比如 咖啡、镰仓、谷中" aria-label="搜索地点" autocomplete="off" style="margin-bottom:10px">
     <div class="scroller" id="filters"></div>
     <div style="height:10px"></div>
     <div class="grid" id="grid"></div>
+    </div>
   </section>
 
   <!-- 集章 -->
@@ -383,7 +405,7 @@ var byId={}; PLACES.forEach(function(p){byId[p.id]=p});
 var QS=new URLSearchParams(location.search);
 
 /* ---------- 状态 ---------- */
-function blank(){return {st:{},stamps:{},mood:null,quests:{},qd:null,loc:null}}
+function blank(){return {st:{},stamps:{},plan:{},mood:null,quests:{},qd:null,loc:null}}
 function load(){try{return Object.assign(blank(),JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return blank()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var S=load();
@@ -410,6 +432,7 @@ function ranked(){
   var z=zone(), l=loc(), sl=slot(), rain=isRain();
   return PLACES.filter(function(p){return p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id]}).map(function(p){
     var s=rnd[p.id]*1.4, why=[];
+    if(S.plan[p.id]===dayNo()){s+=3; why.push('你排在今天')}
     if(S.st[p.id]==='super'){s+=2.5; why.push('你说特别想去')} else if(S.st[p.id]==='want') s+=1.2;
     if(l){var km=dist(l,p); s-=Math.min(km,25)*0.22; if(km<2.5) s+=1.2; why.push(distText(km))}
     if(S.mood && p.tags.indexOf(S.mood)>=0){s+=2.6; why.push('合你「'+TAGS[S.mood][1]+'」的心情')} else if(S.mood) s-=1.5;
@@ -461,9 +484,9 @@ function heroCard(x,tape){
 }
 function renderHero(){
   var r=ranked();
-  if(!r.length){$('#hero').innerHTML='<div class="card empty">这一片的池子空了。<br><span class="muted">去「地点」里把划掉的捞回来，或者换个心情。</span></div>';return}
+  if(!r.length){$('#hero').innerHTML=todayPlan()+'<div class="card empty">这一片的池子空了。<br><span class="muted">去「地点」里把划掉的捞回来，或者换个心情。</span></div>';return}
   if(heroIdx>=r.length) heroIdx=0;
-  $('#hero').innerHTML=heroCard(r[heroIdx],'现在可以');
+  $('#hero').innerHTML=todayPlan()+heroCard(r[heroIdx],'现在可以');
 }
 function todayKey(){var t=tk(); return t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate()}
 function pickQuest(force){
@@ -537,9 +560,29 @@ function bindSwipe(c){
   c.addEventListener('pointerup',end); c.addEventListener('pointercancel',function(){moved=true;dx=dy=0;end()});
 }
 
+/* ---------- 小排程 ---------- */
+var WK=['一','二','三','四','五','六','日'], listMode='list';
+function dayLabel(d){return '11/'+(15+d)+' 周'+WK[d-1]}
+function planned(d){return PLACES.filter(function(p){return S.plan[p.id]===d})}
+function prow(p){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':'')+'</button>'}
+function daySelector(id){return '<div class="days">'+WK.map(function(w,i){var d=i+1; return '<button data-act="plan" data-v="'+d+'" class="'+(S.plan[id]===d?'on':'')+(d===KAMA_DAY?' k':'')+'" aria-pressed="'+(S.plan[id]===d)+'" aria-label="'+dayLabel(d)+(d===KAMA_DAY?' 镰仓日':'')+'">'+(15+d)+'<small>周'+w+'</small></button>'}).join('')+'</div>'}
+function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=planned(d).filter(function(p){return !S.stamps[p.id]}); if(!a.length) return '';
+  return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。</p>'+a.map(prow).join('')+'</div>'}
+function renderPlan(){
+  var today=dayNo(), n=Object.keys(S.plan).length, h='<h2 class="sec">小排程</h2><p class="muted" style="margin:-4px 0 12px">'+(n?'只是大概的打算，随时可以改。点开地点可以换一天或者拿掉。':'还没排。点开任何一个地点，在「大概哪天去」里选一天，这里就会出现。')+'</p>';
+  for(var d=1;d<=TRIP_DAYS;d++){var a=planned(d), mins=a.reduce(function(t,p){return t+p.mins},0);
+    h+='<div class="card dayc'+(d===today?' today':'')+'"><h3>'+dayLabel(d)+(d===today?'<span class="chip hot">今天</span>':'')+(d===KAMA_DAY?'<span class="chip">镰仓日</span>':'')+(a.length?'<span class="muted" style="font-family:var(--body);margin-left:auto">'+a.length+' 个 · 约 '+(Math.round(mins/30)/2)+' 小时</span>':'')+'</h3>'+(a.length?a.map(prow).join(''):'<p class="muted" style="margin:2px 0 0">空着，随便走走</p>')+'</div>'}
+  var loose=PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super') && !S.plan[p.id] && !S.stamps[p.id]});
+  if(loose.length) h+='<h2 class="sec">想去但还没排</h2><div class="card dayc">'+loose.map(prow).join('')+'</div>';
+  $('#planPane').innerHTML=h;
+}
+
 /* ---------- 地点 ---------- */
 var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
 function renderList(){
+  $('#planPane').hidden=listMode!=='plan'; $('#listPane').hidden=listMode==='plan';
+  [].forEach.call(document.querySelectorAll('[data-act=lmode]'),function(b){b.classList.toggle('on',b.dataset.v===listMode)});
+  if(listMode==='plan') return renderPlan();
   $('#filters').innerHTML=FILTERS.map(function(f){return '<button class="chip fchip'+(filter===f[0]?' on':'')+'" data-act="filter" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('');
   var q=($('#q').value||'').trim().toLowerCase(), words=q?q.split(/s+/):[];
   var list=PLACES.filter(function(p){var st=S.st[p.id];
@@ -740,6 +783,7 @@ function openDetail(id){
     '<div class="tipbox"><b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
     '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener" style="flex:1.5">Google Maps</a><a class="btn" href="'+route(p)+'" target="_blank" rel="noopener">怎么去</a></div>'+
     '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
+    '<h4 class="mine" style="margin-top:4px">大概哪天去 <span class="muted" style="font-family:var(--body)">'+(S.plan[id]?'排在 '+dayLabel(S.plan[id])+'，再点一下拿掉':'不排也行')+'</span></h4>'+daySelector(id)+
     (sp?'<div class="stamped-row">'+stampSVG(p)+'<div><b style="font-family:var(--display);font-weight:400;font-size:18px">'+sp.d+' 来过这里</b><br><button class="btn small" data-act="unstamp" style="margin-top:6px">撤销盖章</button></div></div><textarea id="note" placeholder="给这一天写一句话…" aria-label="给这一天写一句话"></textarea>'
        :'<div class="row"><button class="btn coral" data-act="stamp">盖章：我来过了</button></div>')+
     '<h4 class="mine">我拍的照片</h4>'+shotsHTML(id)+(sp?'':'<p class="muted" style="margin:6px 0 0">加了照片会顺便盖上章。</p>')+
@@ -771,6 +815,8 @@ document.addEventListener('click',function(e){
   else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
   else if(a==='filter'){filter=v; renderList()}
   else if(a==='offline') saveOffline();
+  else if(a==='lmode'){listMode=v; renderList(); window.scrollTo(0,0)}
+  else if(a==='plan'){var d=+v, pp=byId[openId]; if(S.plan[openId]===d){delete S.plan[openId]; toast('从排程里拿掉了')} else {S.plan[openId]=d; toast(pp.zone==='kamakura'&&d!==KAMA_DAY?'排好了。提醒：这是镰仓的地点，镰仓日是 19 号':pp.zone!=='kamakura'&&d===KAMA_DAY?'排好了。提醒：19 号是镰仓日，这个在东京':'排在 '+dayLabel(d)+' 了')} save(); reopen()}
   else if(a==='recap') openRecap();
   else if(a==='rcfmt'){RC.fmt=v; reopen()}
   else if(a==='rcshuffle'){RC.seed++; paintRecap()}
