@@ -192,6 +192,26 @@ textarea{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:
 .stamped-row{display:flex;align-items:center;gap:12px;margin-top:12px}
 .stamped-row .stamp{width:96px;flex:none}
 
+/* 我的照片 */
+h4.mine{font-family:var(--display);font-weight:400;font-size:18px;margin:18px 0 8px}
+.shots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.shot{position:relative;aspect-ratio:1/1;border:var(--line);border-radius:12px;overflow:hidden;background:var(--white);display:block}
+.shot img{width:100%;height:100%;object-fit:cover;display:block}
+.shot button{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:50%;background:var(--white);border:var(--line);font-size:12px;line-height:1}
+.shot.add{border-style:dashed;display:grid;place-items:center;align-content:center;text-align:center;font-size:12px;font-weight:700;cursor:pointer}
+.shot.add b{font-size:26px;line-height:1;font-weight:400}
+.shot.add input{position:absolute;width:1px;height:1px;opacity:0}
+.shot.pick{opacity:.45}
+.shot.pick.on{opacity:1;box-shadow:0 0 0 3px var(--coral)}
+.shot.pick i{position:absolute;left:4px;top:4px;min-width:24px;height:24px;border-radius:50%;background:var(--coral);color:#fff;font-style:normal;font-weight:700;font-size:13px;display:grid;place-items:center;border:var(--line)}
+.slot.got.pic{padding:0;overflow:hidden}
+.slot.got.pic>img{width:100%;height:100%;object-fit:cover;display:block}
+.slot.got.pic .stamp{position:absolute;right:-4%;bottom:-4%;width:58%;mix-blend-mode:normal;background:rgba(255,252,243,.9);border-radius:50%}
+.slot.got.pic em{position:absolute;left:5px;top:5px;background:var(--navy);color:#fff;font-style:normal;font-size:11px;font-weight:700;border-radius:999px;padding:0 7px}
+.recap-prev{background:var(--mustard);border:var(--line);border-radius:16px;padding:12px;margin:46px 0 4px;text-align:center;min-height:200px;display:grid;place-items:center}
+.recap-prev img{max-width:100%;max-height:62vh;display:block;margin:0 auto;box-shadow:4px 4px 0 var(--navy);-webkit-touch-callout:default}
+input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:999px;padding:9px 16px;background:var(--white)}
+
 /* 底部导航 */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--cream);border-top:var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:center}
 nav div{display:flex;width:100%;max-width:480px}
@@ -315,6 +335,8 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
     <h2 class="sec">集章册</h2>
     <div id="bookTop"></div>
     <div class="book" id="book" style="margin-top:14px"></div>
+    <h2 class="sec">旅行结算图</h2>
+    <div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">把这趟散步做成一张图</b><p class="muted" style="margin:4px 0 10px">用你拍的照片和盖的章拼成海报，可以直接发 Instagram。回来之后生成最完整，路上也能随时看看。</p><div class="row"><button class="btn coral" data-act="recap">生成结算图</button></div></div>
     <h2 class="sec">离线照片</h2>
     <div id="offline"></div>
     <h2 class="sec">做过的小事</h2>
@@ -406,9 +428,10 @@ function maps(p){return 'https://www.google.com/maps/search/?api=1&query='+encod
 function route(p){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.jp)+'&travelmode=transit'}
 function toast(t){var el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(function(){el.classList.remove('on')},1900)}
 function hash(s){var h=0; for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h)}
+function shortName(p){return p.zh.replace(/[与和].*$/,'').replace(/^(清晨的|北镰仓 |吉祥寺 )/,'').replace(/\s.*$/,'')}
 function stampSVG(p,cls){
   var st=S.stamps[p.id]||{d:''}, h=hash(p.id), col=['#E9574D','#2F6FD0','#173A7A'][h%3], rot=(h%25)-12;
-  var name=p.zh.replace(/[与和].*$/,'').replace(/^(清晨的|北镰仓 |吉祥寺 )/,'').replace(/\s.*$/,'');
+  var name=shortName(p);
   var lines=name.length<=4?[name]:[name.slice(0,Math.ceil(name.length/2)),name.slice(Math.ceil(name.length/2))];
   var fs=lines[0].length>=5?15:lines.length>1?17:(name.length<=2?26:21);
   var txt=lines.map(function(t,i){return '<text x="50" y="'+(lines.length>1?44+i*19:52)+'" text-anchor="middle" font-size="'+fs+'">'+t+'</text>'}).join('');
@@ -528,9 +551,9 @@ function renderList(){
 /* ---------- 集章 ---------- */
 function renderBook(){
   var n=Object.keys(S.stamps).length;
-  $('#bookTop').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:20px">'+(n?'已经盖了 '+n+' 个章':'还没有章')+'</b><p class="muted" style="margin:4px 0 0">'+(n?'点开任何一个章，可以给那天写一句话。':'到了一个地方，打开它的详情按「盖章」，这里就会多一枚。')+'</p></div>';
+  $('#bookTop').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:20px">'+(n?'已经盖了 '+n+' 个章':'还没有章')+'</b><p class="muted" style="margin:4px 0 0">'+(n?'点开任何一个章，可以写一句话、放上你拍的照片。':'到了一个地方，打开它的详情按「盖章」，这里就会多一枚。')+'</p></div>';
   var got=PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t}), rest=PLACES.filter(function(p){return !S.stamps[p.id] && S.st[p.id]!=='skip'});
-  $('#book').innerHTML=got.concat(rest).map(function(p){return S.stamps[p.id]?'<button class="slot got" data-act="open" data-id="'+p.id+'">'+stampSVG(p,justStamped===p.id?'thud':'')+'</button>':'<button class="slot" data-act="open" data-id="'+p.id+'">'+p.zh+'</button>'}).join('');
+  $('#book').innerHTML=got.concat(rest).map(function(p){var mine=shotsOf(p.id); return S.stamps[p.id]?(mine.length?'<button class="slot got pic" data-act="open" data-id="'+p.id+'"><img src="'+mine[0].thumb+'" alt="'+p.zh+'">'+(mine.length>1?'<em>'+mine.length+'</em>':'')+stampSVG(p,justStamped===p.id?'thud':'')+'</button>':'<button class="slot got" data-act="open" data-id="'+p.id+'">'+stampSVG(p,justStamped===p.id?'thud':'')+'</button>'):'<button class="slot" data-act="open" data-id="'+p.id+'">'+p.zh+'</button>'}).join('');
   justStamped=null;
   var done=Object.keys(S.quests);
   renderOffline();
@@ -565,6 +588,143 @@ function saveOffline(){
   renderOffline('正在保存，请不要关掉页面…');
 }
 
+/* ---------- 我拍的照片（只存在这台手机的 IndexedDB 里） ---------- */
+var SHOTS=[], DBP=null;
+function db(){ if(!DBP) DBP=new Promise(function(res,rej){ if(!window.indexedDB) return rej(new Error('no idb')); var r=indexedDB.open('sanpo-db',1);
+  r.onupgradeneeded=function(){r.result.createObjectStore('shots',{keyPath:'id',autoIncrement:true}); r.result.createObjectStore('full',{keyPath:'id'})};
+  r.onsuccess=function(){res(r.result)}; r.onerror=function(){rej(r.error)}}); return DBP }
+function loadShots(){return db().then(function(d){return new Promise(function(res,rej){var r=d.transaction('shots').objectStore('shots').getAll(); r.onsuccess=function(){SHOTS=r.result||[]; res()}; r.onerror=function(){rej(r.error)}})})}
+function shotsOf(pid){return SHOTS.filter(function(x){return x.pid===pid})}
+function shotsHTML(pid){return '<div class="shots">'+shotsOf(pid).map(function(x){return '<span class="shot"><img src="'+x.thumb+'" alt="我拍的照片"><button data-act="delshot" data-id="'+x.id+'" aria-label="删掉这张照片">✕</button></span>'}).join('')+addTile(pid)+'</div>'}
+function addTile(pid){return '<label class="shot add"><input type="file" accept="image/*" multiple data-up="'+pid+'"><b>＋</b><span>加照片</span></label>'}
+function loadImg(src){return new Promise(function(res,rej){var im=new Image(); im.onload=function(){res(im)}; im.onerror=function(){rej(new Error('img'))}; im.src=src})}
+function shrink(im,max,q){var k=Math.min(1,max/Math.max(im.naturalWidth,im.naturalHeight)), c=document.createElement('canvas'); c.width=Math.max(1,Math.round(im.naturalWidth*k)); c.height=Math.max(1,Math.round(im.naturalHeight*k)); c.getContext('2d').drawImage(im,0,0,c.width,c.height); return c}
+function putShot(pid,thumb,buf){return db().then(function(d){return new Promise(function(res,rej){var t=d.transaction(['shots','full'],'readwrite'), rec={pid:pid,t:Date.now(),thumb:thumb}, r=t.objectStore('shots').add(rec);
+  r.onsuccess=function(){rec.id=r.result; t.objectStore('full').put({id:rec.id,buf:buf})}; t.oncomplete=function(){SHOTS.push(rec); res(rec)}; t.onerror=t.onabort=function(){rej(t.error)}})})}
+function addShots(files,pid){
+  var list=[].slice.call(files), ok=0, bad=0; if(!list.length) return Promise.resolve();
+  toast('正在存照片…'); if(navigator.storage&&navigator.storage.persist) navigator.storage.persist().catch(function(){});
+  function one(f){var u=URL.createObjectURL(f); return loadImg(u).then(function(im){
+      var thumb=shrink(im,420,.8).toDataURL('image/jpeg',.8), c=shrink(im,1600);
+      return new Promise(function(res,rej){c.toBlob(function(b){b?res(b):rej(new Error('blob'))},'image/jpeg',.86)}).then(function(b){return new Response(b).arrayBuffer()}).then(function(buf){return putShot(pid,thumb,buf)});
+    }).then(function(rec){ok++; if(pid==='_free'&&RC.ids&&RC.ids.length<6) RC.ids.push(rec.id)},function(){bad++}).then(function(){URL.revokeObjectURL(u)})}
+  return list.reduce(function(p,f){return p.then(function(){return one(f)})},Promise.resolve()).then(function(){
+    if(ok && byId[pid] && !S.stamps[pid]){var t=tk(); S.stamps[pid]={d:(t.getMonth()+1)+'/'+t.getDate(),t:Date.now(),note:''}; save(); justStamped=pid}
+    toast(bad?(ok?'存了 '+ok+' 张，有 '+bad+' 张没存成':'这张照片存不了，换一张试试'):'存好了 '+ok+' 张');
+  });
+}
+function delShot(id){return db().then(function(d){return new Promise(function(res,rej){var t=d.transaction(['shots','full'],'readwrite'); t.objectStore('shots').delete(id); t.objectStore('full').delete(id);
+  t.oncomplete=function(){SHOTS=SHOTS.filter(function(x){return x.id!==id}); if(RC.ids) RC.ids=RC.ids.filter(function(x){return x!==id}); res()}; t.onerror=function(){rej(t.error)}})})}
+function fullImg(id){return db().then(function(d){return new Promise(function(res,rej){var r=d.transaction('full').objectStore('full').get(id);
+  r.onsuccess=function(){ if(!r.result) return rej(new Error('gone')); var u=URL.createObjectURL(new Blob([r.result.buf],{type:'image/jpeg'})); loadImg(u).then(function(im){im._u=u; res(im)},rej)}; r.onerror=function(){rej(r.error)}})})}
+function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId) openDetail(openId); sh.scrollTop=y}
+
+/* ---------- 旅行结算图 ---------- */
+var RC={fmt:'post',ids:null,line:null,seed:7,blob:null,url:null}, rcTok=0;
+function gotPlaces(){return PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t})}
+function defaultPicks(){var seen={}, a=[], rest=[]; SHOTS.slice().sort(function(x,y){return x.t-y.t}).forEach(function(x){ if(!seen[x.pid]||x.pid==='_free'){seen[x.pid]=1; a.push(x.id)} else rest.push(x.id)}); return a.concat(rest).slice(0,6)}
+function openRecap(){
+  if(!RC.ids) RC.ids=defaultPicks(); RC.ids=RC.ids.filter(function(id){return SHOTS.some(function(x){return x.id===id})});
+  if(RC.line==null){var n=gotPlaces().map(function(p){return (S.stamps[p.id].note||'').trim()}).filter(function(t){return t&&t.length<=20})[0]; RC.line=n||'不赶路，走到哪算哪'}
+  openId='recap'; recapSheet(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
+}
+function recapSheet(){
+  var all=SHOTS.slice().sort(function(a,b){return a.t-b.t});
+  $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button>'+
+    '<div class="recap-prev"><img id="recapImg" alt="旅行结算图"'+(RC.url?' src="'+RC.url+'"':' hidden')+'><span class="muted" id="recapMsg">正在画…</span></div>'+
+    '<p class="muted" style="margin:6px 0 0;text-align:center">长按图片也可以直接存到相册。</p>'+
+    '<div class="seg"><button data-act="rcfmt" data-v="post" class="'+(RC.fmt==='post'?'on':'')+'">帖子 4:5</button><button data-act="rcfmt" data-v="story" class="'+(RC.fmt==='story'?'on':'')+'">限时动态 9:16</button></div>'+
+    '<div class="row"><button class="btn" data-act="rcshuffle">换个排法</button><button class="btn primary" data-act="rcshare" style="flex:1.4">保存 / 分享</button></div>'+
+    '<h4 class="mine">图上的一句话</h4><input class="line" id="rcLine" maxlength="18" placeholder="留空就不放" aria-label="图上的一句话">'+
+    '<h4 class="mine">放哪些照片（点一下选，最多 6 张）</h4><div class="shots">'+all.map(function(x){var k=RC.ids.indexOf(x.id); return '<button class="shot pick'+(k>=0?' on':'')+'" data-act="rcpick" data-id="'+x.id+'" aria-pressed="'+(k>=0)+'"><img src="'+x.thumb+'" alt="我拍的照片">'+(k>=0?'<i>'+(k+1)+'</i>':'')+'</button>'}).join('')+addTile('_free')+'</div>'+
+    '<p class="muted" style="margin:8px 0 0">'+(all.length?'这里加的照片不属于某个地点，只用在结算图里。':'还没有照片：在这里加，或者去每个地点的详情里加。没有照片时会用你盖的章来排版。')+'</p>';
+  var li=$('#rcLine'); li.value=RC.line; li.addEventListener('input',function(){RC.line=li.value; clearTimeout(recapSheet.t); recapSheet.t=setTimeout(paintRecap,450)});
+  paintRecap();
+}
+function rng(a){return function(){a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296}}
+function paintRecap(){
+  var tok=++rcTok, chosen=RC.ids.map(function(id){return SHOTS.filter(function(x){return x.id===id})[0]}).filter(Boolean), got=gotPlaces();
+  var msg=$('#recapMsg'); if(msg) msg.textContent='正在画…';
+  var txt='东京散步签个章张照片件小事街区还没有先去走天夜「」'+RC.line+got.map(shortName).join('')+chosen.map(function(x){return byId[x.pid]?shortName(byId[x.pid]):''}).join('');
+  var fonts=document.fonts&&document.fonts.load?Promise.all([document.fonts.load('400 40px "ZCOOL KuaiLe"',txt),document.fonts.load('700 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 24px "Noto Sans SC"',txt)]).catch(function(){}):Promise.resolve();
+  Promise.all([Promise.all(chosen.map(function(x){return fullImg(x.id).then(function(im){return {im:im,pid:x.pid}},function(){return null})})),fonts]).then(function(r){
+    var items=r[0].filter(Boolean); if(tok!==rcTok){items.forEach(function(o){URL.revokeObjectURL(o.im._u)}); return}
+    var c=drawRecap(RC.fmt,items,got,RC.line.trim(),RC.seed); items.forEach(function(o){URL.revokeObjectURL(o.im._u)});
+    c.toBlob(function(b){ if(tok!==rcTok||!b) return; RC.blob=b; if(RC.url) URL.revokeObjectURL(RC.url); RC.url=URL.createObjectURL(b);
+      var im=$('#recapImg'), m=$('#recapMsg'); if(im){im.src=RC.url; im.hidden=false} if(m) m.textContent=''},'image/jpeg',.93);
+  }).catch(function(){var m=$('#recapMsg'); if(m) m.textContent='没画出来，再点一次「换个排法」试试。'});
+}
+function drawRecap(fmt,items,got,line,seed){
+  var NAVY='#173A7A',MUST='#E9B93E',BLUE='#2F6FD0',SKY='#8CC3F0',CORAL='#E9574D',CREAM='#FFFCF3';
+  var story=fmt==='story', Wd=1080, Hd=story?1920:1350, c=document.createElement('canvas'); c.width=Wd; c.height=Hd;
+  var x=c.getContext('2d'), R=rng(seed*7919+items.length), DISP='"ZCOOL KuaiLe","PingFang SC",sans-serif', LAT='Fredoka,"ZCOOL KuaiLe",sans-serif', BODY='"Noto Sans SC","PingFang SC",sans-serif';
+  function spaced(t,cx,y,gap){var ws=[].map.call(t,function(ch){return x.measureText(ch).width}), tot=ws.reduce(function(a,b){return a+b},0)+gap*(t.length-1), px=cx-tot/2; x.textAlign='left'; [].forEach.call(t,function(ch,i){x.fillText(ch,px,y); px+=ws[i]+gap}); x.textAlign='center'}
+  function stamp(p,cx,cy,r,rot,backed){
+    var h=hash(p.id), col=[CORAL,BLUE,NAVY][h%3], st=S.stamps[p.id]||{d:''}, name=shortName(p), k=r/50;
+    var lines=name.length<=4?[name]:[name.slice(0,Math.ceil(name.length/2)),name.slice(Math.ceil(name.length/2))], fs=lines[0].length>=5?15:lines.length>1?17:(name.length<=2?26:21);
+    x.save(); x.translate(cx,cy); x.rotate(rot); x.scale(k,k);
+    if(backed){x.fillStyle='rgba(255,252,243,.94)'; x.beginPath(); x.arc(0,0,49,0,7); x.fill()}
+    x.strokeStyle=col; x.fillStyle=col; x.lineWidth=3; x.beginPath(); x.arc(0,0,46,0,7); x.stroke();
+    x.lineWidth=1.2; x.setLineDash([2,3]); x.beginPath(); x.arc(0,0,40,0,7); x.stroke(); x.setLineDash([]);
+    x.textAlign='center'; x.textBaseline='alphabetic'; x.font='400 '+fs+'px '+DISP; lines.forEach(function(t,i){x.fillText(t,0,(lines.length>1?44+i*19:52)-50)});
+    x.font='500 9px '+LAT; x.fillText(p.zone==='kamakura'?'KAMAKURA':'TOKYO',0,-26); x.font='500 11px '+LAT; x.fillText(st.d,0,30); x.restore();
+  }
+  function polaroid(o,cx,cy,cw,ch,ang){
+    var im=o.im, cap=byId[o.pid]?shortName(byId[o.pid]):'', m=18, w=cw-m*2, h=ch-m*2, pad=Math.max(12,Math.min(20,w*.045)), capH=cap?Math.max(44,Math.min(66,h*.14)):pad;
+    x.save(); x.translate(cx+cw/2,cy+ch/2); x.rotate(ang);
+    x.fillStyle=NAVY; x.fillRect(-w/2+9,-h/2+9,w,h); x.fillStyle='#fff'; x.fillRect(-w/2,-h/2,w,h); x.strokeStyle=NAVY; x.lineWidth=4; x.strokeRect(-w/2,-h/2,w,h);
+    var iw=w-pad*2, ih=h-pad-capH, ix=-w/2+pad, iy=-h/2+pad, sc=Math.max(iw/im.naturalWidth,ih/im.naturalHeight), sw=iw/sc, sh=ih/sc;
+    x.drawImage(im,(im.naturalWidth-sw)/2,(im.naturalHeight-sh)*.45,sw,sh,ix,iy,iw,ih); x.lineWidth=3; x.strokeRect(ix,iy,iw,ih);
+    if(cap){x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; var fz=Math.round(capH*.52); x.font='400 '+fz+'px '+DISP; while(x.measureText(cap).width>iw&&fz>16){fz-=2; x.font='400 '+fz+'px '+DISP} x.fillText(cap,0,h/2-capH/2+1); x.textBaseline='alphabetic'}
+    x.restore();
+  }
+  // 底色与圆点
+  x.fillStyle=MUST; x.fillRect(0,0,Wd,Hd); x.fillStyle='rgba(23,58,122,.13)';
+  for(var dy=14;dy<Hd;dy+=28) for(var dx=14;dx<Wd;dx+=28){x.beginPath(); x.arc(dx,dy,2.6,0,7); x.fill()}
+  // 海报纸
+  var px=44, py=story?150:44, pw=Wd-88, ph=Hd-py*2;
+  x.fillStyle=NAVY; x.fillRect(px+12,py+12,pw,ph); x.fillStyle=CREAM; x.fillRect(px,py,pw,ph); x.strokeStyle=NAVY; x.lineWidth=5; x.strokeRect(px,py,pw,ph);
+  var ix=px+16, iy=py+16, iw=pw-32, ih=ph-32;
+  // 抬头
+  var y=iy+120; x.textAlign='center'; x.textBaseline='alphabetic'; x.font='700 108px '+LAT; x.fillStyle=NAVY; spaced('TOKYO',Wd/2+5,y+5,26); x.fillStyle=MUST; spaced('TOKYO',Wd/2,y,26);
+  y+=60; x.font='400 42px '+DISP; x.fillStyle=BLUE; spaced('东京散步签',Wd/2,y,20);
+  y+=48; x.font='500 28px '+LAT; x.fillStyle=NAVY; spaced('2026.11.16 — 11.22',Wd/2,y,3);
+  var top=y+30;
+  // 底部水波
+  var bh=story?140:112, by=iy+ih-bh; x.fillStyle=SKY; x.fillRect(ix,by,iw,bh); x.strokeStyle='#fff'; x.lineWidth=5; x.lineJoin='round';
+  [by+bh*.46,by+bh*.78].forEach(function(wy,k){x.beginPath(); for(var wx=ix;wx<=ix+iw;wx+=6){var yy=wy+8*Math.sin((wx+k*40)/22); wx===ix?x.moveTo(wx,yy):x.lineTo(wx,yy)} x.stroke()});
+  x.strokeStyle=NAVY; x.lineWidth=4; x.beginPath(); x.moveTo(ix,by); x.lineTo(ix+iw,by); x.stroke(); x.lineWidth=2.5; x.strokeRect(ix,iy,iw,ih);
+  // 数字
+  var areas={}; got.forEach(function(p){areas[p.area]=1});
+  var stats=[[got.length,'个章',CORAL],[SHOTS.length,'张照片',BLUE],[Object.keys(S.quests).length,'件小事',NAVY],[Object.keys(areas).length,'个街区',CORAL]], sh=126, sy=by-sh-6, colw=iw/4;
+  stats.forEach(function(st,i){var cx=ix+colw*(i+.5); x.textAlign='center'; x.fillStyle=st[2]; x.font='700 70px '+LAT; x.fillText(st[0],cx,sy+70); x.fillStyle=NAVY; x.font='500 26px '+BODY; x.fillText(st[1],cx,sy+108);
+    if(i){x.strokeStyle='rgba(23,58,122,.4)'; x.lineWidth=2.5; x.setLineDash([4,7]); x.beginPath(); x.moveTo(ix+colw*i,sy+18); x.lineTo(ix+colw*i,sy+110); x.stroke(); x.setLineDash([])}});
+  var bottom=sy-6;
+  if(line){x.fillStyle=NAVY; x.textAlign='center'; x.font='400 40px '+DISP; x.fillText('「'+line+'」',Wd/2,bottom-22); bottom-=82}
+  // 限时动态：多一排章
+  if(story&&items.length&&got.length){var row=got.slice(-5), rr=82, gap=(iw-40)/row.length; row.forEach(function(p,i){stamp(p,ix+20+gap*(i+.5),bottom-rr-8,Math.min(rr,gap/2-6),(R()-.5)*.5)}); bottom-=rr*2+26}
+  // 主体
+  var X=ix+22, Y=top, Wc=iw-44, Hc=bottom-top;
+  if(items.length){
+    var n=items.length, tall=Hc/Wc>1.05, rows={1:[1],2:tall?[1,1]:[2],3:[1,2],4:[2,2],5:[2,3],6:tall?[2,2,2]:[3,3]}[n];
+    var wts=rows.map(function(k){return rows.length>1&&k===1?1.5:(k===2&&rows.indexOf(3)>=0?1.25:1)}), tw=wts.reduce(function(a,b){return a+b},0), cy=Y, idx=0;
+    rows.forEach(function(k,ri){var rh=Hc*wts[ri]/tw, cw=Wc/k; for(var j=0;j<k;j++){polaroid(items[idx++],X+cw*j,cy,cw,rh,(R()-.5)*(n===1?.035:.075))} cy+=rh});
+    if(!story&&got.length){var last=got.slice(-2); stamp(last[last.length-1],X+Wc-78,Y+Hc-74,76,-.22+(R()-.5)*.2,true); if(last.length>1&&n>1) stamp(last[0],X+80,Y+78,68,.2+(R()-.5)*.2,true)}
+  } else if(got.length){
+    var show=got.slice(-12), cols=show.length<=4?2:show.length<=9?3:4, rws=Math.ceil(show.length/cols), cw2=Wc/cols, ch2=Hc/rws, r2=Math.min(cw2,ch2)/2-16;
+    show.forEach(function(p,i){var rowN=Math.floor(i/cols), inRow=Math.min(cols,show.length-rowN*cols), off=(Wc-inRow*cw2)/2; stamp(p,X+off+cw2*(i%cols+.5),Y+ch2*(rowN+.5),r2,(hash(p.id)%25-12)/57+(R()-.5)*.1)});
+  } else {
+    x.fillStyle=NAVY; x.textAlign='center'; x.font='400 46px '+DISP; x.fillText('还没有章',Wd/2,Y+Hc/2-10); x.font='500 28px '+BODY; x.globalAlpha=.7; x.fillText('先去走走，回来再生成',Wd/2,Y+Hc/2+44); x.globalAlpha=1;
+  }
+  return c;
+}
+function shareRecap(){
+  if(!RC.blob){toast('图还没画好，等一下');return}
+  var f; try{f=new File([RC.blob],'tokyo-sanpo.jpg',{type:'image/jpeg'})}catch(e){}
+  if(f&&navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f]}).catch(function(){}); return}
+  var a=document.createElement('a'); a.href=RC.url; a.download='tokyo-sanpo.jpg'; document.body.appendChild(a); a.click(); a.remove(); toast('已保存，找不到的话长按图片存');
+}
+
 /* ---------- 详情 ---------- */
 var openId=null;
 function openDetail(id){
@@ -579,6 +739,7 @@ function openDetail(id){
     '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
     (sp?'<div class="stamped-row">'+stampSVG(p)+'<div><b style="font-family:var(--display);font-weight:400;font-size:18px">'+sp.d+' 来过这里</b><br><button class="btn small" data-act="unstamp" style="margin-top:6px">撤销盖章</button></div></div><textarea id="note" placeholder="给这一天写一句话…" aria-label="给这一天写一句话"></textarea>'
        :'<div class="row"><button class="btn coral" data-act="stamp">盖章：我来过了</button></div>')+
+    '<h4 class="mine">我拍的照片</h4>'+shotsHTML(id)+(sp?'':'<p class="muted" style="margin:6px 0 0">加了照片会顺便盖上章。</p>')+
     (ps.length?'<span class="credit">照片来自 Wikimedia Commons，作者与授权：'+ps.map(function(o,i){return '<a href="https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(o.file)+'" target="_blank" rel="noopener">第 '+(i+1)+' 张</a>'}).join('、')+'</span>':'');
   var g=$('#gal'); if(g){g.scrollLeft=0; g.addEventListener('scroll',function(){var w=g.firstElementChild.offsetWidth+8, k=Math.round(g.scrollLeft/w); [].forEach.call($('#galDots').children,function(d,i){d.classList.toggle('on',i===k)})},{passive:true})}
   if(sp){var n=$('#note'); n.value=sp.note||''; n.addEventListener('input',function(){S.stamps[id].note=n.value; save()})}
@@ -607,10 +768,18 @@ document.addEventListener('click',function(e){
   else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
   else if(a==='filter'){filter=v; renderList()}
   else if(a==='offline') saveOffline();
+  else if(a==='recap') openRecap();
+  else if(a==='rcfmt'){RC.fmt=v; reopen()}
+  else if(a==='rcshuffle'){RC.seed++; paintRecap()}
+  else if(a==='rcshare') shareRecap();
+  else if(a==='rcpick'){var sid=+el.dataset.id, k=RC.ids.indexOf(sid); if(k>=0) RC.ids.splice(k,1); else if(RC.ids.length>=6){toast('最多放 6 张');return} else RC.ids.push(sid); reopen()}
+  else if(a==='delshot'){ if(confirm('删掉这张照片？')) delShot(+el.dataset.id).then(reopen,function(){toast('没删掉，再试一次')}) }
   else if(a==='st'){ if(S.st[openId]===v) delete S.st[openId]; else S.st[openId]=v; save(); openDetail(openId)}
   else if(a==='stamp'){var t=tk(); S.stamps[openId]={d:(t.getMonth()+1)+'/'+t.getDate(),t:Date.now(),note:''}; save(); justStamped=openId; var id2=openId; openDetail(id2); var s=$('#sheet .stamp'); if(s) s.classList.add('thud'); toast('盖好了！')}
   else if(a==='unstamp'){delete S.stamps[openId]; save(); openDetail(openId)}
 });
+document.addEventListener('change',function(e){var inp=e.target; if(!inp.dataset||!inp.dataset.up||!inp.files||!inp.files.length) return; var pid=inp.dataset.up;
+  addShots(inp.files,pid).then(function(){ if(openId===pid||(pid==='_free'&&openId==='recap')){reopen(); var s=$('#sheet .stamp'); if(s&&justStamped===pid) s.classList.add('thud')} },function(){toast('这台设备存不了照片')})});
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&openId) closeSheet()});
 
 function locate(){
@@ -627,6 +796,7 @@ function weather(){
 }
 if(QS.get('rain')) W.code=61;
 renderHome(); weather();
+loadShots().then(function(){ if(SHOTS.length) refresh() }).catch(function(){});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 setInterval(function(){if(tab==='home'&&!openId) renderStatus()},60000);
 })();
