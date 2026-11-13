@@ -212,6 +212,14 @@ h4.mine{font-family:var(--display);font-weight:400;font-size:18px;margin:18px 0 
 .recap-prev img{max-width:100%;max-height:62vh;display:block;margin:0 auto;box-shadow:4px 4px 0 var(--navy);-webkit-touch-callout:default}
 input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:999px;padding:9px 16px;background:var(--white)}
 
+/* 自己加的地点 */
+.form label{display:block;font-family:var(--display);font-size:17px;margin:16px 0 6px}
+.form label small{font-family:var(--body);font-size:12px;opacity:.7}
+.form .seg{margin:0}
+.form .chips{margin:0}
+.form .chip.on{background:var(--navy);color:#fff}
+.addbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;border:2px dashed var(--navy);border-radius:999px;padding:8px;font-weight:700;font-size:14px;background:rgba(255,252,243,.6);margin-bottom:12px}
+
 /* 小排程 */
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .days button{border:var(--line);border-radius:12px;background:var(--white);padding:5px 0 4px;line-height:1.15;font-family:var(--latin);font-weight:700;font-size:17px;position:relative}
@@ -348,6 +356,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
     <h2 class="sec">想去池</h2>
     <input class="line" id="q" type="search" placeholder="搜地点、街区，比如 咖啡、镰仓、谷中" aria-label="搜索地点" autocomplete="off" style="margin-bottom:10px">
     <div class="scroller" id="filters"></div>
+    <button class="addbtn" data-act="addp">＋ 加一个自己的地点</button>
     <div style="height:10px"></div>
     <div class="grid" id="grid"></div>
     </div>
@@ -405,10 +414,11 @@ var byId={}; PLACES.forEach(function(p){byId[p.id]=p});
 var QS=new URLSearchParams(location.search);
 
 /* ---------- 状态 ---------- */
-function blank(){return {st:{},stamps:{},plan:{},mood:null,quests:{},qd:null,loc:null}}
+function blank(){return {st:{},stamps:{},plan:{},custom:[],mood:null,quests:{},qd:null,loc:null}}
 function load(){try{return Object.assign(blank(),JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return blank()}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
 var S=load();
+S.custom.forEach(function(p){PLACES.push(p); byId[p.id]=p});
 var W={temp:null,code:null,sunset:'16:32'};
 var rnd={}; PLACES.forEach(function(p){rnd[p.id]=Math.random()});
 var heroIdx=0, filter='all', lastDecided=[], justStamped=null;
@@ -434,7 +444,7 @@ function ranked(){
     var s=rnd[p.id]*1.4, why=[];
     if(S.plan[p.id]===dayNo()){s+=3; why.push('你排在今天')}
     if(S.st[p.id]==='super'){s+=2.5; why.push('你说特别想去')} else if(S.st[p.id]==='want') s+=1.2;
-    if(l){var km=dist(l,p); s-=Math.min(km,25)*0.22; if(km<2.5) s+=1.2; why.push(distText(km))}
+    if(l&&p.lat!=null){var km=dist(l,p); s-=Math.min(km,25)*0.22; if(km<2.5) s+=1.2; why.push(distText(km))}
     if(S.mood && p.tags.indexOf(S.mood)>=0){s+=2.6; why.push('合你「'+TAGS[S.mood][1]+'」的心情')} else if(S.mood) s-=1.5;
     if(p.best.indexOf(sl)>=0){s+=1.6; why.push({am:'上午去正好',pm:'下午去正好',sunset:'赶得上日落',night:'夜里更好看'}[sl])} else s-=0.8;
     if(rain){ if(p.tags.indexOf('rain')>=0){s+=2.5; why.push('下雨也不怕')} else s-=1.5 }
@@ -446,9 +456,9 @@ function ranked(){
 
 /* ---------- 小零件 ---------- */
 function pics(p){return (window.PHOTOS&&PHOTOS[p.id])||[]}
-function photo(p,size,i){var o=pics(p)[i||0]; if(!o) return ''; var u=o.img; if(size&&o.w>=size) u=u.replace(/\/\d+px-/,'/'+size+'px-'); return u}
+function photo(p,size,i){var o=pics(p)[i||0]; if(!o){ if(p.custom&&!i){var m=shotsOf(p.id)[0]; return m?m.thumb:''} return ''} var u=o.img; if(size&&o.w>=size) u=u.replace(/\/\d+px-/,'/'+size+'px-'); return u}
 function ph(p,size,extra,i){var u=photo(p,size,i); return '<span class="ph"><i class="ico">'+ico(p.tags[0])+'</i>'+(u?'<img src="'+u+'" alt="'+p.zh+'" loading="lazy" draggable="false" crossorigin="anonymous" onerror="this.remove()">':'')+(extra||'')+'</span>'}
-function maps(p){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.jp)}
+function maps(p){return p.url||'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.jp)}
 function route(p){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.jp)+'&travelmode=transit'}
 function toast(t){var el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(function(){el.classList.remove('on')},1900)}
 function hash(s){var h=0; for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h)}
@@ -560,6 +570,58 @@ function bindSwipe(c){
   c.addEventListener('pointerup',end); c.addEventListener('pointercancel',function(){moved=true;dx=dy=0;end()});
 }
 
+/* ---------- 自己加的地点 ---------- */
+var CP=null;
+function clean(t){return (t||'').replace(/[<>&"']/g,'').trim()}
+function parseMaps(u){var o={}, m; try{u=decodeURIComponent(u)}catch(e){}
+  if((m=u.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/))||(m=u.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/))||(m=u.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/))){o.lat=+m[1]; o.lng=+m[2]}
+  if((m=u.match(/\/maps\/place\/([^\/@]+)/))) o.name=clean(m[1].replace(/\+/g,' ')); return o}
+function openForm(id,preset){
+  var p=id?byId[id]:null; CP={id:id||null,zone:p?p.zone:zone(),tags:p?p.tags.slice():['walk'],mins:p?p.mins:60};
+  openId='addp';
+  $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button><div class="form"><h3 style="margin-top:0">'+(p?'改一改':'加一个自己的地点')+'</h3>'+
+    '<label for="cpName">名字</label><input class="line" id="cpName" maxlength="30" placeholder="店名或地名，写 Google Maps 搜得到的" autocomplete="off">'+
+    '<label for="cpUrl">Google Maps 链接 <small>可选</small></label><input class="line" id="cpUrl" inputmode="url" placeholder="Google Maps 点「分享」复制，贴这里" autocomplete="off">'+
+    '<label>在哪边</label><div class="seg"><button data-act="cpzone" data-v="tokyo">东京</button><button data-act="cpzone" data-v="kamakura">镰仓 · 江之岛</button></div>'+
+    '<label>去干嘛 <small>可以多选</small></label><div class="chips">'+Object.keys(TAGS).map(function(k){return '<button class="chip" data-act="cptag" data-v="'+k+'">'+ico(k)+TAGS[k][1]+'</button>'}).join('')+'</div>'+
+    '<label>大概待多久</label><div class="seg">'+[[30,'半小时'],[60,'1 小时'],[120,'2 小时'],[240,'半天']].map(function(m){return '<button data-act="cpmins" data-v="'+m[0]+'">'+m[1]+'</button>'}).join('')+'</div>'+
+    '<label for="cpNote">备注 <small>可选</small></label><textarea id="cpNote" maxlength="120" placeholder="为什么想去、谁推荐的、想吃什么…" style="margin-top:0"></textarea>'+
+    '<div class="row" style="margin-top:16px"><button class="btn coral" data-act="cpsave">'+(p?'保存':'加进想去池')+'</button></div>'+
+    '<p class="muted" style="margin:10px 0 0">没贴链接的话，会用名字去公开地图（OpenStreetMap）找一下位置，用来算远近；找不到也不影响使用。</p></div>';
+  $('#cpName').value=p?p.zh:(preset||''); $('#cpUrl').value=p&&p.url?p.url:''; $('#cpNote').value=p?p.blurb:'';
+  $('#cpUrl').addEventListener('input',function(){var o=parseMaps(this.value); if(o.name&&!$('#cpName').value.trim()) $('#cpName').value=o.name});
+  formSync(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
+}
+function formSync(){[].forEach.call(document.querySelectorAll('#sheet [data-act=cpzone]'),function(b){b.classList.toggle('on',b.dataset.v===CP.zone)});
+  [].forEach.call(document.querySelectorAll('#sheet [data-act=cptag]'),function(b){b.classList.toggle('on',CP.tags.indexOf(b.dataset.v)>=0)});
+  [].forEach.call(document.querySelectorAll('#sheet [data-act=cpmins]'),function(b){b.classList.toggle('on',+b.dataset.v===CP.mins)})}
+function geocode(name){var ctl=window.AbortController?new AbortController():null; if(ctl) setTimeout(function(){ctl.abort()},6000);
+  return fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=jp&q='+encodeURIComponent(name),ctl?{signal:ctl.signal}:{}).then(function(r){return r.json()}).then(function(j){return j&&j[0]?{lat:+j[0].lat,lng:+j[0].lon}:null}).catch(function(){return null})}
+var cpBusy=false;
+function saveForm(){
+  if(cpBusy) return; var name=clean($('#cpName').value), url=$('#cpUrl').value.trim(), note=clean($('#cpNote').value);
+  if(!name){toast('先写个名字'); $('#cpName').focus(); return}
+  if(url&&!/^https:\/\/[^\s"'<>]+$/.test(url)){toast('链接看起来不对，可以留空'); return}
+  var old=CP.id?byId[CP.id]:null, g=url?parseMaps(url):{}, tags=CP.tags.length?CP.tags:['walk'], pickedZone=CP.zone;
+  var p=old||{id:'c'+Date.now().toString(36),custom:true,best:[],tip:'',book:false};
+  var moved=!old||old.zh!==name||(old.url||'')!==url;
+  p.zh=name; p.jp=name; p.wiki=''; p.tags=tags; p.mins=CP.mins; p.blurb=note; if(url) p.url=url; else delete p.url;
+  if(moved){p.lat=g.lat!=null?g.lat:null; p.lng=g.lng!=null?g.lng:null}
+  function done(){
+    p.zone=pickedZone; if(p.lat!=null){ if(dist(p,{lat:35.315,lng:139.53})<14) p.zone='kamakura'; else if(dist(p,{lat:35.68,lng:139.76})<60) p.zone='tokyo' }
+    p.area=p.zone==='kamakura'?'镰仓':'东京';
+    if(!old){S.custom.push(p); PLACES.push(p); byId[p.id]=p; rnd[p.id]=Math.random(); deckOrder.push(p.id); S.st[p.id]='want'}
+    save(); cpBusy=false; openDetail(p.id); toast(old?'改好了':(p.lat!=null?'加好了，位置也找到了':'加好了（没找到位置，不影响使用）'));
+  }
+  if(moved&&p.lat==null){cpBusy=true; toast('正在找位置…'); geocode(name).then(function(r){ if(r){p.lat=r.lat; p.lng=r.lng} done()})} else done();
+}
+function delPlace(id){
+  var mine=shotsOf(id).map(function(x){return x.id});
+  S.custom=S.custom.filter(function(p){return p.id!==id}); var k=PLACES.indexOf(byId[id]); if(k>=0) PLACES.splice(k,1); delete byId[id]; delete S.st[id]; delete S.plan[id]; delete S.stamps[id];
+  deckOrder=deckOrder.filter(function(x){return x!==id}); save();
+  Promise.all(mine.map(delShot)).catch(function(){}).then(function(){closeSheet(); toast('删掉了')});
+}
+
 /* ---------- 小排程 ---------- */
 var WK=['一','二','三','四','五','六','日'], listMode='list';
 function dayLabel(d){return '11/'+(15+d)+' 周'+WK[d-1]}
@@ -578,7 +640,7 @@ function renderPlan(){
 }
 
 /* ---------- 地点 ---------- */
-var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
+var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['mine','我加的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
 function renderList(){
   $('#planPane').hidden=listMode!=='plan'; $('#listPane').hidden=listMode==='plan';
   [].forEach.call(document.querySelectorAll('[data-act=lmode]'),function(b){b.classList.toggle('on',b.dataset.v===listMode)});
@@ -588,10 +650,10 @@ function renderList(){
   var list=PLACES.filter(function(p){var st=S.st[p.id];
     if(words.length){var hay=(p.zh+' '+p.jp+' '+p.area+' '+p.blurb+' '+p.tip+' '+(p.zone==='kamakura'?'镰仓 鎌倉 kamakura':'东京 東京 tokyo')+' '+p.tags.map(function(t){return TAGS[t][1]}).join(' ')).toLowerCase(); if(!words.every(function(w){return hay.indexOf(w)>=0})) return false}
     if(filter==='all') return true; if(filter==='tokyo'||filter==='kamakura') return p.zone===filter;
-    if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0});
+    if(filter==='mine') return !!p.custom; if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0});
   $('#grid').innerHTML=list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
     return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500)+'<b>'+p.zh+'</b><small>'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></button>'}).join('')
-    :'<div class="card empty" style="grid-column:1/-1">'+(q?'没找到「'+q.replace(/[<>&]/g,'')+'」<br><span class="muted">换个词，或者把上面的筛选切回「全部」。</span>':'这里还是空的')+'</div>';
+    :'<div class="card empty" style="grid-column:1/-1">'+(q?'没找到「'+q.replace(/[<>&]/g,'')+'」<br><span class="muted">换个词，或者把上面的筛选切回「全部」。</span><div class="row" style="margin-top:12px"><button class="btn mustard" data-act="addp" data-v="'+q.replace(/[<>&"']/g,'')+'">把它加成自己的地点</button></div>':'这里还是空的')+'</div>';
 }
 
 /* ---------- 集章 ---------- */
@@ -663,7 +725,7 @@ function delShot(id){return db().then(function(d){return new Promise(function(re
   t.oncomplete=function(){SHOTS=SHOTS.filter(function(x){return x.id!==id}); if(RC.ids) RC.ids=RC.ids.filter(function(x){return x!==id}); res()}; t.onerror=function(){rej(t.error)}})})}
 function fullImg(id){return db().then(function(d){return new Promise(function(res,rej){var r=d.transaction('full').objectStore('full').get(id);
   r.onsuccess=function(){ if(!r.result) return rej(new Error('gone')); var u=URL.createObjectURL(new Blob([r.result.buf],{type:'image/jpeg'})); loadImg(u).then(function(im){im._u=u; res(im)},rej)}; r.onerror=function(){rej(r.error)}})})}
-function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId) openDetail(openId); sh.scrollTop=y}
+function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId&&byId[openId]) openDetail(openId); sh.scrollTop=y}
 
 /* ---------- 旅行结算图 ---------- */
 var RC={fmt:'post',ids:null,line:null,seed:7,blob:null,url:null}, rcTok=0;
@@ -775,18 +837,19 @@ function shareRecap(){
 var openId=null;
 function openDetail(id){
   var p=byId[id], st=S.st[id], sp=S.stamps[id], ps=pics(p); openId=id;
-  var l=loc(), d=l?dist(l,p):null;
+  var l=loc(), d=l&&p.lat!=null?dist(l,p):null;
   $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button>'+(ps.length>1?'<div class="gal" id="gal">'+ps.map(function(o,i){return ph(p,960,i===0?'<span class="area">'+p.area+'</span>':'',i)}).join('')+'</div><div class="dots" id="galDots">'+ps.map(function(o,i){return '<i class="'+(i===0?'on':'')+'"></i>'}).join('')+'</div>':ph(p,960,'<span class="area">'+p.area+'</span>'))+
-    '<h3>'+p.zh+'</h3><p class="jp">'+p.jp+'</p>'+
+    '<h3>'+p.zh+'</h3>'+(p.jp!==p.zh?'<p class="jp">'+p.jp+'</p>':'<p class="jp"></p>')+
     '<div class="chips" style="margin:0 0 10px">'+p.tags.map(function(t){return '<span class="chip">'+ico(t)+TAGS[t][1]+'</span>'}).join('')+'</div>'+
-    '<p style="margin:0">'+p.blurb+'</p>'+
-    '<div class="tipbox"><b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
+    (p.blurb?'<p style="margin:0">'+p.blurb+'</p>':'')+
+    '<div class="tipbox">'+(p.custom?'<b>自己加的地点</b><br><span class="muted">大约待 ':'<b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 ')+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
     '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener" style="flex:1.5">Google Maps</a><a class="btn" href="'+route(p)+'" target="_blank" rel="noopener">怎么去</a></div>'+
     '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
     '<h4 class="mine" style="margin-top:4px">大概哪天去 <span class="muted" style="font-family:var(--body)">'+(S.plan[id]?'排在 '+dayLabel(S.plan[id])+'，再点一下拿掉':'不排也行')+'</span></h4>'+daySelector(id)+
     (sp?'<div class="stamped-row">'+stampSVG(p)+'<div><b style="font-family:var(--display);font-weight:400;font-size:18px">'+sp.d+' 来过这里</b><br><button class="btn small" data-act="unstamp" style="margin-top:6px">撤销盖章</button></div></div><textarea id="note" placeholder="给这一天写一句话…" aria-label="给这一天写一句话"></textarea>'
        :'<div class="row"><button class="btn coral" data-act="stamp">盖章：我来过了</button></div>')+
     '<h4 class="mine">我拍的照片</h4>'+shotsHTML(id)+(sp?'':'<p class="muted" style="margin:6px 0 0">加了照片会顺便盖上章。</p>')+
+    (p.custom?'<div class="row" style="margin-top:18px"><button class="btn small" data-act="editp" style="flex:1">改一改</button><button class="btn small" data-act="delp" style="flex:1">删除这个地点</button></div>':'')+
     (ps.length?'<span class="credit">照片来自 Wikimedia Commons，作者与授权：'+ps.map(function(o,i){return '<a href="https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(o.file)+'" target="_blank" rel="noopener">第 '+(i+1)+' 张</a>'}).join('、')+'</span>':'');
   var g=$('#gal'); if(g){g.scrollLeft=0; g.addEventListener('scroll',function(){var w=g.firstElementChild.offsetWidth+8, k=Math.round(g.scrollLeft/w); [].forEach.call($('#galDots').children,function(d,i){d.classList.toggle('on',i===k)})},{passive:true})}
   if(sp){var n=$('#note'); n.value=sp.note||''; n.addEventListener('input',function(){S.stamps[id].note=n.value; save()})}
@@ -815,6 +878,13 @@ document.addEventListener('click',function(e){
   else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
   else if(a==='filter'){filter=v; renderList()}
   else if(a==='offline') saveOffline();
+  else if(a==='addp') openForm(null,v);
+  else if(a==='editp') openForm(openId);
+  else if(a==='delp'){ if(confirm('删除「'+byId[openId].zh+'」？它的章和照片也会一起删掉。')) delPlace(openId) }
+  else if(a==='cpzone'){CP.zone=v; formSync()}
+  else if(a==='cptag'){var ti=CP.tags.indexOf(v); if(ti>=0) CP.tags.splice(ti,1); else CP.tags.push(v); formSync()}
+  else if(a==='cpmins'){CP.mins=+v; formSync()}
+  else if(a==='cpsave') saveForm();
   else if(a==='lmode'){listMode=v; renderList(); window.scrollTo(0,0)}
   else if(a==='plan'){var d=+v, pp=byId[openId]; if(S.plan[openId]===d){delete S.plan[openId]; toast('从排程里拿掉了')} else {S.plan[openId]=d; toast(pp.zone==='kamakura'&&d!==KAMA_DAY?'排好了。提醒：这是镰仓的地点，镰仓日是 19 号':pp.zone!=='kamakura'&&d===KAMA_DAY?'排好了。提醒：19 号是镰仓日，这个在东京':'排在 '+dayLabel(d)+' 了')} save(); reopen()}
   else if(a==='recap') openRecap();
