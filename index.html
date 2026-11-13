@@ -325,6 +325,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
   <!-- 地点 -->
   <section class="view" id="v-list">
     <h2 class="sec">想去池</h2>
+    <input class="line" id="q" type="search" placeholder="搜地点、街区，比如 咖啡、镰仓、谷中" aria-label="搜索地点" autocomplete="off" style="margin-bottom:10px">
     <div class="scroller" id="filters"></div>
     <div style="height:10px"></div>
     <div class="grid" id="grid"></div>
@@ -540,12 +541,14 @@ function bindSwipe(c){
 var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
 function renderList(){
   $('#filters').innerHTML=FILTERS.map(function(f){return '<button class="chip fchip'+(filter===f[0]?' on':'')+'" data-act="filter" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('');
+  var q=($('#q').value||'').trim().toLowerCase(), words=q?q.split(/s+/):[];
   var list=PLACES.filter(function(p){var st=S.st[p.id];
+    if(words.length){var hay=(p.zh+' '+p.jp+' '+p.area+' '+p.blurb+' '+p.tip+' '+(p.zone==='kamakura'?'镰仓 鎌倉 kamakura':'东京 東京 tokyo')+' '+p.tags.map(function(t){return TAGS[t][1]}).join(' ')).toLowerCase(); if(!words.every(function(w){return hay.indexOf(w)>=0})) return false}
     if(filter==='all') return true; if(filter==='tokyo'||filter==='kamakura') return p.zone===filter;
     if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0});
   $('#grid').innerHTML=list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
     return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500)+'<b>'+p.zh+'</b><small>'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></button>'}).join('')
-    :'<div class="card empty" style="grid-column:1/-1">这里还是空的</div>';
+    :'<div class="card empty" style="grid-column:1/-1">'+(q?'没找到「'+q.replace(/[<>&]/g,'')+'」<br><span class="muted">换个词，或者把上面的筛选切回「全部」。</span>':'这里还是空的')+'</div>';
 }
 
 /* ---------- 集章 ---------- */
@@ -780,6 +783,7 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('change',function(e){var inp=e.target; if(!inp.dataset||!inp.dataset.up||!inp.files||!inp.files.length) return; var pid=inp.dataset.up;
   addShots(inp.files,pid).then(function(){ if(openId===pid||(pid==='_free'&&openId==='recap')){reopen(); var s=$('#sheet .stamp'); if(s&&justStamped===pid) s.classList.add('thud')} },function(){toast('这台设备存不了照片')})});
+$('#q').addEventListener('input',renderList);
 document.addEventListener('keydown',function(e){if(e.key==='Escape'&&openId) closeSheet()});
 
 function locate(){
