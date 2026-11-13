@@ -220,6 +220,19 @@ input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radiu
 .form .chip.on{background:var(--navy);color:#fff}
 .addbtn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;border:2px dashed var(--navy);border-radius:999px;padding:8px;font-weight:700;font-size:14px;background:rgba(255,252,243,.6);margin-bottom:12px}
 
+/* Google 评分 */
+.gr{display:block;background:var(--white);border:var(--line);border-radius:14px;padding:12px;margin:0 0 14px;color:inherit;text-decoration:none;font-size:14px}
+.gr-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.gr-top b{font-family:var(--display);font-weight:400;font-size:30px;line-height:1}
+.gr-stars{position:relative;display:inline-block;font-size:16px;letter-spacing:2px;color:rgba(0,0,0,.16);line-height:1}
+.gr-stars i{position:absolute;left:0;top:0;overflow:hidden;white-space:nowrap;color:var(--mustard);font-style:normal}
+.gr-q{display:flex;gap:8px;margin-top:10px;line-height:1.5}
+.gr-q em{flex:none;font-style:normal;font-size:12px;font-weight:700;border-radius:999px;padding:1px 8px;height:22px;line-height:20px;border:1.5px solid currentColor}
+.gr-q.good em{color:#2f7d5b}.gr-q.bad em{color:var(--coral)}
+.gr-warn{margin-top:10px;padding:8px 10px;border-radius:10px;background:rgba(232,93,74,.12);font-weight:700;line-height:1.5}
+.gr-more{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:12px;opacity:.75}
+.gr-more span:last-child{font-weight:700;opacity:1;white-space:nowrap}
+
 /* 小排程 */
 .days{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
 .days button{border:var(--line);border-radius:12px;background:var(--white);padding:5px 0 4px;line-height:1.15;font-family:var(--latin);font-weight:700;font-size:17px;position:relative}
@@ -391,6 +404,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
 
 <script src="places.js"></script>
 <script src="photos.js"></script>
+<script src="reviews.js"></script>
 <script>
 (function(){
 'use strict';
@@ -568,6 +582,18 @@ function bindSwipe(c){
     c.classList.add('snap'); c.style.transform=''; [].forEach.call(c.querySelectorAll('.lab'),function(l){l.style.opacity=0});
   }
   c.addEventListener('pointerup',end); c.addEventListener('pointercancel',function(){moved=true;dx=dy=0;end()});
+}
+
+/* ---------- Google 评分 ---------- */
+function greview(p){
+  var v=(typeof REVIEWS!=='undefined')&&REVIEWS[p.id], href=maps(p);
+  if(!v) return '<a class="gr" href="'+href+'" target="_blank" rel="noopener"><div class="gr-more" style="margin-top:0"><span>'+(p.custom?'自己加的地点，这里没有存评分。':'街区和线路没有单一的 Google 评分。')+'</span><span>去 Google 看评价 ›</span></div></a>';
+  return '<a class="gr" href="'+href+'" target="_blank" rel="noopener">'+
+    '<div class="gr-top"><b>'+v.r.toFixed(1)+'</b><span class="gr-stars">★★★★★<i style="width:'+(v.r/5*100).toFixed(0)+'%">★★★★★</i></span><span class="muted">Google · '+v.n.toLocaleString('en-US')+' 条评价</span></div>'+
+    (v.warn?'<div class="gr-warn">⚠ '+v.warn+'</div>':'')+
+    '<div class="gr-q good"><em>好评</em><span>'+v.good+'</span></div>'+
+    '<div class="gr-q bad"><em>差评</em><span>'+v.bad+'</span></div>'+
+    '<div class="gr-more"><span>'+REVIEWS_AT.slice(5).replace('-','/')+' 查的 · 评价是转述，不是原文</span><span>去 Google 看全部 ›</span></div></a>';
 }
 
 /* ---------- 自己加的地点 ---------- */
@@ -843,6 +869,7 @@ function openDetail(id){
     '<div class="chips" style="margin:0 0 10px">'+p.tags.map(function(t){return '<span class="chip">'+ico(t)+TAGS[t][1]+'</span>'}).join('')+'</div>'+
     (p.blurb?'<p style="margin:0">'+p.blurb+'</p>':'')+
     '<div class="tipbox">'+(p.custom?'<b>自己加的地点</b><br><span class="muted">大约待 ':'<b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 ')+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
+    greview(p)+
     '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener" style="flex:1.5">Google Maps</a><a class="btn" href="'+route(p)+'" target="_blank" rel="noopener">怎么去</a></div>'+
     '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
     '<h4 class="mine" style="margin-top:4px">大概哪天去 <span class="muted" style="font-family:var(--body)">'+(S.plan[id]?'排在 '+dayLabel(S.plan[id])+'，再点一下拿掉':'不排也行')+'</span></h4>'+daySelector(id)+
