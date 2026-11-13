@@ -1,0 +1,635 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="东京散步签">
+<meta name="theme-color" content="#E9B93E">
+<title>东京散步签</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+<style>
+:root{
+  --mustard:#E9B93E; --navy:#173A7A; --blue:#2F6FD0; --sky:#8CC3F0; --ice:#EAF4FC;
+  --coral:#E9574D; --pink:#F6B9B2; --cream:#FFFCF3; --white:#fff;
+  --line:2px solid var(--navy);
+  --display:'ZCOOL KuaiLe','Fredoka','PingFang SC',sans-serif;
+  --latin:'Fredoka','ZCOOL KuaiLe',sans-serif;
+  --body:'Noto Sans SC','PingFang SC','Hiragino Sans',sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:var(--mustard)}
+body{margin:0;font-family:var(--body);color:var(--navy);font-size:15px;line-height:1.6;
+  background:var(--mustard) radial-gradient(rgba(23,58,122,.13) 1.2px,transparent 1.4px) 0 0/14px 14px;min-height:100vh}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0;padding:0}
+a{color:inherit}
+.app{max-width:480px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px calc(96px + env(safe-area-inset-bottom))}
+.view{display:none;animation:rise .35s ease both}
+.view.on{display:block}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* 海报头图 */
+.poster{background:var(--white);border:var(--line);padding:8px;box-shadow:5px 5px 0 var(--navy)}
+.poster-in{border:1.5px solid var(--navy);position:relative;overflow:hidden}
+.poster h1{margin:0;position:absolute;top:10px;left:0;right:0;text-align:center;font-family:var(--latin);font-weight:700;
+  font-size:30px;letter-spacing:.14em;color:var(--mustard);line-height:1;text-shadow:1.5px 1.5px 0 var(--navy)}
+.poster h1 small{display:block;font-family:var(--display);font-size:13px;letter-spacing:.5em;color:var(--blue);margin-top:5px;text-shadow:none;text-indent:.5em}
+.scene{display:block;width:100%;height:auto}
+.cloud{animation:drift 26s linear infinite alternate}
+.cloud.b{animation-duration:34s;animation-direction:alternate-reverse}
+@keyframes drift{from{transform:translateX(-14px)}to{transform:translateX(22px)}}
+.train{animation:train 16s linear infinite}
+@keyframes train{from{transform:translateX(-70px)}to{transform:translateX(410px)}}
+.boat{animation:bob 3.2s ease-in-out infinite alternate}
+@keyframes bob{from{transform:translate(0,0) rotate(-2deg)}to{transform:translate(5px,2px) rotate(2deg)}}
+
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.chip{background:var(--cream);border:var(--line);border-radius:999px;padding:3px 12px;font-size:13px;font-weight:500;white-space:nowrap}
+.chip.hot{background:var(--coral);color:#fff}
+.chip.blue{background:var(--blue);color:#fff}
+button.chip{box-shadow:2px 2px 0 var(--navy)}
+button.chip:active{transform:translate(2px,2px);box-shadow:none}
+
+h2.sec{font-family:var(--display);font-weight:400;font-size:20px;margin:24px 0 10px;display:flex;align-items:center;gap:8px}
+h2.sec::after{content:"";flex:1;height:8px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='8'%3E%3Cpath d='M0 4Q6 0 12 4T24 4' fill='none' stroke='%23173A7A' stroke-width='1.5'/%3E%3C/svg%3E")}
+.scroller{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 8px;margin:0 -16px;scrollbar-width:none}
+.scroller::-webkit-scrollbar{display:none}
+.mood{flex:none;background:var(--cream);border:var(--line);border-radius:14px;padding:8px 12px;text-align:center;min-width:68px;box-shadow:3px 3px 0 var(--navy);transition:transform .12s,box-shadow .12s}
+.mood b{display:block}
+#moods{display:grid;grid-template-columns:repeat(4,1fr);gap:12px 10px;overflow:visible;margin:0;padding:0 3px 3px 0}
+#moods .mood{min-width:0;padding:8px 2px}
+.mood span{font-size:12px;font-weight:500}
+.mood.on{background:var(--navy);color:#fff;transform:translate(3px,3px);box-shadow:none}
+
+.card{background:var(--cream);border:var(--line);border-radius:20px;box-shadow:5px 5px 0 var(--navy);padding:14px;position:relative}
+.tape{position:absolute;top:-13px;left:18px;background:var(--coral);color:#fff;border:var(--line);border-radius:8px;padding:1px 12px;font-family:var(--display);font-size:15px;transform:rotate(-3deg);z-index:2}
+.ph{position:relative;display:block;width:100%;border:var(--line);border-radius:14px;overflow:hidden;background:var(--ice) radial-gradient(rgba(47,111,208,.3) 1.3px,transparent 1.5px) 0 0/9px 9px}
+.ph .ico{position:absolute;inset:0;display:grid;place-items:center}
+.ph .ico .ic{width:38%;max-width:84px;height:auto}
+.ic{width:17px;height:17px;vertical-align:-3.500px;margin-right:4px;overflow:visible}
+.mood b .ic{width:34px;height:34px;display:block;margin:0 auto 2px}
+.ph img{position:relative;display:block;width:100%;height:100%;object-fit:cover}
+.hero .ph{aspect-ratio:4/3}
+.area{position:absolute;left:10px;bottom:10px;background:var(--mustard);border:var(--line);border-radius:999px;padding:0 10px;font-size:12px;font-weight:700}
+.hero h3{font-family:var(--display);font-weight:400;font-size:26px;margin:12px 0 2px;line-height:1.25}
+.why{color:var(--coral);font-weight:700;font-size:13px;margin:0 0 6px}
+.blurb{margin:0 0 12px}
+.row{display:flex;gap:10px}
+.btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;text-decoration:none;background:var(--white);border:var(--line);border-radius:999px;
+  padding:10px 14px;font-weight:700;font-size:15px;box-shadow:3px 3px 0 var(--navy);transition:transform .1s,box-shadow .1s;min-height:46px}
+.btn:active{transform:translate(3px,3px);box-shadow:none}
+.btn.primary{background:var(--blue);color:#fff}
+.btn.coral{background:var(--coral);color:#fff}
+.btn.mustard{background:var(--mustard)}
+.btn.small{flex:none;padding:6px 14px;font-size:13px;min-height:36px}
+.banner{background:var(--blue);color:#fff;border:var(--line);border-radius:14px;padding:8px 14px;margin-top:14px;font-weight:500;font-size:14px}
+
+.quest{background:var(--white)}
+.quest p{font-family:var(--display);font-size:19px;margin:6px 0 12px;line-height:1.45}
+.prog{height:14px;border:var(--line);border-radius:999px;background:var(--white);overflow:hidden;margin-top:6px}
+.prog i{display:block;height:100%;background:var(--coral);border-right:var(--line);min-width:8px;transition:width .5s}
+.muted{opacity:.7;font-size:13px}
+.empty{text-align:center;padding:30px 10px;font-family:var(--display);font-size:18px}
+
+/* 扭蛋 */
+.gacha-wrap{text-align:center}
+.machine{width:230px;max-width:70%;display:block;margin:6px auto 0;overflow:visible}
+.knob{transform-origin:120px 216px;transition:transform .9s cubic-bezier(.3,1.6,.5,1)}
+.machine.spin .knob{transform:rotate(360deg)}
+.machine.spin .caps circle{animation:jig .22s linear 4 alternate}
+.machine.spin .caps circle:nth-child(odd){animation-direction:alternate-reverse}
+@keyframes jig{from{transform:translate(-3px,3px)}to{transform:translate(4px,-5px)}}
+.capsule{width:74px;height:74px;margin:-6px auto 0;position:relative;opacity:0}
+.capsule i{position:absolute;left:0;right:0;height:50%;border:var(--line)}
+.capsule i:first-child{top:0;border-radius:74px 74px 0 0;background:var(--mustard);border-bottom-width:1px}
+.capsule i:last-child{bottom:0;border-radius:0 0 74px 74px;background:var(--white);border-top-width:1px}
+.capsule.drop{opacity:1;animation:drop .6s cubic-bezier(.3,1.5,.6,1) both}
+@keyframes drop{from{transform:translateY(-70px) rotate(-120deg) scale(.4);opacity:0}to{transform:none;opacity:1}}
+.capsule.open i:first-child{animation:capT .45s ease forwards}
+.capsule.open i:last-child{animation:capB .45s ease forwards}
+@keyframes capT{to{transform:translateY(-46px) rotate(-24deg);opacity:0}}
+@keyframes capB{to{transform:translateY(40px) rotate(18deg);opacity:0}}
+#gachaResult{margin-top:-60px;text-align:left}
+#gachaResult .card{animation:pop .5s cubic-bezier(.3,1.5,.6,1) both}
+@keyframes pop{from{transform:scale(.5) rotate(-6deg);opacity:0}to{transform:none;opacity:1}}
+
+/* 滑卡 */
+.deck{position:relative;height:min(64vh,470px);margin:18px 6px 0}
+.scard{position:absolute;inset:0;background:var(--cream);border:var(--line);border-radius:22px;box-shadow:5px 5px 0 var(--navy);padding:12px;display:flex;flex-direction:column;touch-action:none;user-select:none;-webkit-user-select:none;will-change:transform}
+.scard .ph{flex:1;min-height:0}
+.scard h3{font-family:var(--display);font-weight:400;font-size:24px;margin:10px 0 0;line-height:1.25}
+.scard p{margin:2px 0 0;font-size:14px}
+.scard[data-d="1"]{transform:translateY(10px) scale(.96) rotate(2deg)}
+.scard[data-d="2"]{transform:translateY(20px) scale(.92) rotate(-2.5deg)}
+.scard.snap{transition:transform .3s cubic-bezier(.3,1.4,.6,1)}
+.scard.fly{transition:transform .32s ease-in,opacity .32s}
+.lab{position:absolute;top:26px;z-index:3;font-family:var(--display);font-size:24px;border:3px solid;border-radius:10px;padding:0 12px;background:var(--white);opacity:0;pointer-events:none}
+.lab.y{left:24px;color:var(--blue);transform:rotate(-12deg)}
+.lab.n{right:24px;color:var(--coral);transform:rotate(12deg)}
+.lab.s{left:50%;top:auto;bottom:120px;color:#B8860B;transform:translateX(-50%)}
+.swipe-btns{display:flex;justify-content:center;gap:16px;margin-top:26px}
+.round{width:60px;height:60px;border-radius:50%;border:var(--line);background:var(--white);box-shadow:3px 3px 0 var(--navy);font-size:24px;display:grid;place-items:center}
+.round:active{transform:translate(3px,3px);box-shadow:none}
+.round.sm{width:46px;height:46px;font-size:17px;align-self:center}
+
+/* 地点 */
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 12px}
+.pcard{text-align:left;background:var(--cream);border:var(--line);border-radius:16px;box-shadow:4px 4px 0 var(--navy);padding:8px;position:relative;display:block;width:100%}
+.pcard:active{transform:translate(4px,4px);box-shadow:none}
+.pcard .ph{aspect-ratio:1/1;border-radius:10px}
+.pcard b{display:block;font-family:var(--display);font-weight:400;font-size:16px;line-height:1.3;margin-top:7px}
+.pcard small{font-size:12px;opacity:.75}
+.pcard.skip{opacity:.45;filter:grayscale(.7)}
+.badge{position:absolute;top:-8px;right:-6px;z-index:2;width:30px;height:30px;border-radius:50%;border:var(--line);display:grid;place-items:center;font-size:14px;background:var(--mustard)}
+.badge.v{background:var(--coral);color:#fff;font-family:var(--display)}
+.fchip{flex:none}
+.fchip.on{background:var(--navy);color:#fff;transform:translate(2px,2px);box-shadow:none}
+
+/* 集章 */
+.book{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.slot{aspect-ratio:1/1;background:var(--white);border:1.5px dashed rgba(23,58,122,.45);border-radius:14px;display:grid;place-items:center;padding:6px;text-align:center;font-size:12px;line-height:1.3;color:rgba(23,58,122,.5);position:relative;width:100%}
+.slot.got{border:var(--line);background:var(--cream)}
+.stamp{width:92%;height:auto;mix-blend-mode:multiply}
+.stamp.thud{animation:thud .5s cubic-bezier(.2,1.6,.5,1) both}
+@keyframes thud{from{transform:scale(2.4) rotate(-20deg);opacity:0}60%{opacity:1}to{opacity:.92}}
+.qlist{margin:0;padding:0;list-style:none}
+.qlist li{padding:8px 0 8px 30px;border-bottom:1.5px dashed rgba(23,58,122,.3);position:relative;font-size:14px}
+.qlist li::before{content:"";position:absolute;left:2px;top:11px;width:16px;height:16px;border:var(--line);border-radius:5px;background:var(--white)}
+.qlist li.done{opacity:.6;text-decoration:line-through}
+.qlist li.done::before{background:var(--coral)}
+
+/* 详情 */
+.sheet-bg{position:fixed;inset:0;background:rgba(23,58,122,.55);z-index:30;opacity:0;pointer-events:none;transition:opacity .25s}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:31;max-width:480px;margin:0 auto;max-height:92vh;overflow-y:auto;background:var(--cream);border:var(--line);border-bottom:0;border-radius:26px 26px 0 0;
+  padding:14px 16px calc(24px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .35s cubic-bezier(.3,1.1,.4,1)}
+body.sheet-on .sheet-bg{opacity:1;pointer-events:auto}
+body.sheet-on .sheet{transform:none}
+.sheet .ph{aspect-ratio:16/11}
+.gal{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.gal::-webkit-scrollbar{display:none}
+.gal .ph{flex:none;width:90%;scroll-snap-align:start}
+.gal .ph:last-child{width:100%}
+.dots{display:flex;justify-content:center;gap:6px;margin-top:8px}
+.dots i{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--navy);background:var(--white);transition:.2s}
+.dots i.on{background:var(--coral);width:18px;border-radius:8px}
+.cnt{position:absolute;right:10px;bottom:10px;background:var(--white);border:var(--line);border-radius:999px;padding:0 10px;font-size:12px;font-weight:700}
+.sheet h3{font-family:var(--display);font-weight:400;font-size:27px;margin:12px 0 0;line-height:1.25}
+.jp{font-size:13px;opacity:.7;margin:0 0 8px}
+.tipbox{background:var(--white);border:var(--line);border-radius:14px;padding:10px 12px;margin:10px 0 14px;font-size:14px}
+.tipbox b{font-family:var(--display);font-weight:400;color:var(--coral)}
+.seg{display:flex;border:var(--line);border-radius:999px;overflow:hidden;margin:14px 0;background:var(--white)}
+.seg button{flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-right:var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--navy);color:#fff}
+.close{position:sticky;top:0;float:right;z-index:5;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--white);font-size:18px;margin:0 0 -38px;box-shadow:2px 2px 0 var(--navy)}
+textarea{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:14px;padding:10px 12px;background:var(--white);min-height:74px;resize:vertical;margin-top:10px}
+.credit{font-size:11px;opacity:.6;margin-top:14px;display:block}
+.stamped-row{display:flex;align-items:center;gap:12px;margin-top:12px}
+.stamped-row .stamp{width:96px;flex:none}
+
+/* 底部导航 */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--cream);border-top:var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:center}
+nav div{display:flex;width:100%;max-width:480px}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:11px;font-weight:700;padding:5px 0;border-radius:14px}
+nav svg{width:26px;height:26px;fill:var(--white);stroke:var(--navy);stroke-width:1.8;stroke-linejoin:round;stroke-linecap:round}
+nav button.on{background:var(--navy);color:#fff}
+nav button.on svg{fill:var(--mustard);stroke:#fff}
+.toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translate(-50%,20px);z-index:40;background:var(--navy);color:#fff;border-radius:999px;padding:8px 18px;font-weight:500;font-size:14px;opacity:0;transition:.25s;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01s!important;transition-duration:.01s!important}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 今天 -->
+  <section class="view on" id="v-home">
+    <div class="poster"><div class="poster-in">
+      <h1>TOKYO<small>东京散步签</small></h1>
+      <svg class="scene" viewBox="0 0 390 216" stroke="#173A7A" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+        <defs>
+          <pattern id="dots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1" fill="#2F6FD0" stroke="none" opacity=".4"/></pattern>
+          <pattern id="wave" width="24" height="9" patternUnits="userSpaceOnUse"><path d="M0 4.5Q6 .5 12 4.5T24 4.5" fill="none" stroke="#2F6FD0" stroke-width="1.2"/></pattern>
+        </defs>
+        <rect width="390" height="216" fill="#EAF4FC" stroke="none"/>
+        <circle cx="332" cy="74" r="17" fill="#E9B93E"/>
+        <g class="cloud"><path d="M22 84a8 8 0 0 1 8-8 11 11 0 0 1 21-3 9 9 0 0 1 13 11z" fill="#fff"/></g>
+        <g class="cloud b"><path d="M228 72a7 7 0 0 1 7-7 10 10 0 0 1 19-3 8 8 0 0 1 12 10z" fill="#fff"/></g>
+        <path d="M96 66q4-5 8 0q4-5 8 0M300 44q3-4 6 0q3-4 6 0M146 82q3-4 6 0q3-4 6 0" fill="none" stroke="#2F6FD0"/>
+        <!-- 富士山 -->
+        <path d="M222 158L280 86q6-6 12 0l58 72z" fill="#2F6FD0"/>
+        <path d="M266 103l14-17q6-6 12 0l14 17-8-5-6 8-6-8-6 8-6-8z" fill="#fff"/>
+        <path d="M0 158q64-34 132 0z" fill="url(#dots)" stroke="none"/>
+        <!-- 东京塔 -->
+        <path d="M62 60v12" fill="none"/>
+        <path d="M62 72l-3 34-5 22-10 30h12q6-14 12 0h12l-10-30-5-22z" fill="#E9574D"/>
+        <rect x="52" y="124" width="20" height="7" rx="1" fill="#fff"/><rect x="57" y="103" width="10" height="5" rx="1" fill="#fff"/>
+        <!-- 五重塔 -->
+        <path d="M118 84v12" fill="none"/>
+        <g fill="#FFFCF3"><rect x="109" y="100" width="18" height="10"/><rect x="107" y="116" width="22" height="10"/><rect x="105" y="132" width="26" height="10"/><rect x="103" y="148" width="30" height="10"/></g>
+        <g fill="#173A7A"><path d="M102 102q16-10 32 0l-3 2h-26z"/><path d="M99 118q19-10 38 0l-3 2h-32z"/><path d="M96 134q22-10 44 0l-3 2h-38z"/><path d="M93 150q25-10 50 0l-3 2h-44z"/></g>
+        <!-- 晴空塔 -->
+        <path d="M178 62l-3 34-3 62h12l-3-62z" fill="#8CC3F0"/>
+        <rect x="170" y="98" width="16" height="6" rx="3" fill="#fff"/><rect x="172" y="89" width="12" height="5" rx="2.5" fill="#E9B93E"/>
+        <!-- 鸟居 -->
+        <g fill="#E9574D"><rect x="206" y="130" width="5" height="28"/><rect x="229" y="130" width="5" height="28"/><path d="M198 122q22-6 44 0l-2 6h-40z"/><rect x="203" y="134" width="34" height="4"/></g>
+        <!-- 小房子 -->
+        <rect x="300" y="136" width="22" height="22" fill="#F6B9B2"/><path d="M297 136l14-11 14 11z" fill="#173A7A"/>
+        <rect x="324" y="126" width="20" height="32" fill="#E9B93E"/><rect x="346" y="140" width="26" height="18" fill="#8CC3F0"/><path d="M343 140l16-10 16 10z" fill="#E9574D"/>
+        <g fill="#fff" stroke-width="1.2"><rect x="306" y="142" width="5" height="6"/><rect x="329" y="131" width="4" height="5"/><rect x="336" y="131" width="4" height="5"/><rect x="329" y="142" width="4" height="5"/><rect x="336" y="142" width="4" height="5"/><rect x="352" y="145" width="5" height="6"/><rect x="361" y="145" width="5" height="6"/></g>
+        <!-- 银杏 -->
+        <g fill="#E9B93E"><path d="M22 158v-14M150 158v-12M258 158v-12M284 158v-10" fill="none"/><ellipse cx="22" cy="134" rx="10" ry="15"/><ellipse cx="150" cy="138" rx="8" ry="12"/><ellipse cx="258" cy="138" rx="8" ry="12"/><ellipse cx="284" cy="142" rx="6" ry="9" fill="#F6B9B2"/></g>
+        <path d="M0 158h390" fill="none"/>
+        <!-- 小电车 -->
+        <g class="train"><rect x="0" y="159" width="56" height="14" rx="4" fill="#2F6FD0"/><rect x="0" y="165" width="56" height="4" fill="#FFFCF3" stroke="none"/><g fill="#fff" stroke-width="1.2"><rect x="5" y="161.500" width="8" height="5" rx="1"/><rect x="17" y="161.500" width="8" height="5" rx="1"/><rect x="29" y="161.500" width="8" height="5" rx="1"/><rect x="41" y="161.500" width="10" height="5" rx="1"/></g></g>
+        <path d="M0 175h390" fill="none"/>
+        <rect y="176" width="390" height="40" fill="#fff" stroke="none"/><rect y="178" width="390" height="38" fill="url(#wave)" stroke="none"/>
+        <g class="boat"><path d="M286 196h40l-6 10h-28z" fill="#E9574D"/><path d="M305 196v-20l14 17z" fill="#fff"/></g>
+      </svg>
+    </div></div>
+    <div class="chips" id="status"></div>
+    <div id="zoneBanner"></div>
+    <h2 class="sec">现在想怎么过</h2>
+    <div class="scroller" id="moods"></div>
+    <div style="height:18px"></div>
+    <div id="hero"></div>
+    <h2 class="sec">散步小任务</h2>
+    <div id="quest"></div>
+    <h2 class="sec">集章进度</h2>
+    <div id="progress"></div>
+  </section>
+
+  <!-- 扭蛋 -->
+  <section class="view" id="v-gacha">
+    <h2 class="sec">不知道去哪，就扭一个</h2>
+    <div class="gacha-wrap">
+      <svg class="machine" id="machine" viewBox="0 0 240 300" stroke="#173A7A" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+        <circle cx="120" cy="100" r="88" fill="#EAF4FC"/>
+        <g class="caps">
+          <circle cx="78" cy="128" r="19" fill="#E9574D"/><circle cx="118" cy="140" r="19" fill="#E9B93E"/><circle cx="160" cy="128" r="19" fill="#2F6FD0"/>
+          <circle cx="96" cy="94" r="19" fill="#8CC3F0"/><circle cx="140" cy="96" r="19" fill="#F6B9B2"/><circle cx="62" cy="92" r="17" fill="#E9B93E"/>
+          <circle cx="176" cy="92" r="17" fill="#E9574D"/><circle cx="118" cy="58" r="18" fill="#fff"/><circle cx="84" cy="58" r="15" fill="#2F6FD0"/><circle cx="152" cy="60" r="15" fill="#E9B93E"/>
+        </g>
+        <path d="M70 48q22-22 52-22" fill="none" stroke="#fff" stroke-width="5"/>
+        <rect x="38" y="172" width="164" height="100" rx="16" fill="#E9574D"/>
+        <rect x="38" y="172" width="164" height="14" rx="7" fill="#173A7A"/>
+        <g class="knob"><circle cx="120" cy="216" r="23" fill="#E9B93E"/><rect x="114" y="197" width="12" height="38" rx="6" fill="#fff"/></g>
+        <rect x="90" y="250" width="60" height="22" rx="8" fill="#173A7A"/>
+        <path d="M56 272v14M184 272v14" stroke-width="8"/>
+      </svg>
+      <div class="capsule" id="capsule"><i></i><i></i></div>
+      <div id="gachaResult"></div>
+      <div class="row" style="margin-top:18px"><button class="btn mustard" data-act="gacha" id="gachaBtn">扭一下</button></div>
+      <p class="muted" style="margin-top:12px">会从「今天」的推荐里随机掉一个出来</p>
+    </div>
+  </section>
+
+  <!-- 滑卡 -->
+  <section class="view" id="v-swipe">
+    <h2 class="sec">挑一挑</h2>
+    <p class="muted" style="margin:-4px 0 0">右滑想去，左滑不去，上滑特别想去。留下的才会被推荐给你。</p>
+    <div class="deck" id="deck"></div>
+    <div class="swipe-btns" id="swipeBtns">
+      <button class="round sm" data-act="undo" aria-label="撤销">↩</button>
+      <button class="round" data-act="sw" data-v="skip" aria-label="不去" style="color:var(--coral)">✕</button>
+      <button class="round" data-act="sw" data-v="super" aria-label="特别想去" style="background:var(--mustard)">★</button>
+      <button class="round" data-act="sw" data-v="want" aria-label="想去" style="color:var(--blue)">♥</button>
+    </div>
+  </section>
+
+  <!-- 地点 -->
+  <section class="view" id="v-list">
+    <h2 class="sec">想去池</h2>
+    <div class="scroller" id="filters"></div>
+    <div style="height:10px"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- 集章 -->
+  <section class="view" id="v-book">
+    <h2 class="sec">集章册</h2>
+    <div id="bookTop"></div>
+    <div class="book" id="book" style="margin-top:14px"></div>
+    <h2 class="sec">离线照片</h2>
+    <div id="offline"></div>
+    <h2 class="sec">做过的小事</h2>
+    <ul class="qlist" id="qlist"></ul>
+    <p class="credit">地点照片来自 Wikimedia Commons，作者与授权见各地点详情里的链接。营业与预约信息请以 Google Maps 和官网为准。</p>
+  </section>
+</div>
+
+<div class="sheet-bg" data-act="close"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+<div class="toast" id="toast"></div>
+
+<nav><div>
+  <button data-tab="home" class="on"><svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="5.500"/><path d="M14 3v3M14 22v3M3 14h3M22 14h3M6.200 6.200l2.100 2.100M19.700 19.700l2.100 2.100M6.200 21.800l2.100-2.100M19.700 8.300l2.100-2.100" fill="none"/></svg>今天</button>
+  <button data-tab="gacha"><svg viewBox="0 0 28 28"><circle cx="14" cy="14" r="10"/><path d="M4 14h20" fill="none"/><circle cx="14" cy="14" r="2.500"/></svg>扭蛋</button>
+  <button data-tab="swipe"><svg viewBox="0 0 28 28"><rect x="9" y="4" width="14" height="19" rx="3" transform="rotate(8 16 13)"/><rect x="5" y="5" width="14" height="19" rx="3" transform="rotate(-6 12 14)"/></svg>挑一挑</button>
+  <button data-tab="list"><svg viewBox="0 0 28 28"><rect x="4" y="4" width="8.500" height="8.500" rx="2"/><rect x="15.500" y="4" width="8.500" height="8.500" rx="2"/><rect x="4" y="15.500" width="8.500" height="8.500" rx="2"/><rect x="15.500" y="15.500" width="8.500" height="8.500" rx="2"/></svg>地点</button>
+  <button data-tab="book"><svg viewBox="0 0 28 28"><path d="M10 4h8v6l3 6H7l3-6z"/><rect x="5" y="16" width="18" height="4" rx="1.500"/><path d="M5 24h18" fill="none"/></svg>集章</button>
+</div></nav>
+
+<script src="places.js"></script>
+<script src="photos.js"></script>
+<script>
+(function(){
+'use strict';
+var TRIP_START=new Date(2026,10,16), TRIP_DAYS=7, KAMA_DAY=4;
+var TAGS={walk:['','多走走'],sit:['','坐一坐'],water:['','看看水'],leaf:['','看红叶'],view:['','看风景'],eat:['','吃点啥'],rain:['','躲躲雨']};
+var ICONS={
+  walk:'<path d="M4 22v-8l5 1q3 5 9 6l6 1q4 1 4 4H4z" fill="#E9574D"/><path d="M4 26h24v2.500H4z" fill="#fff"/><path d="M11 17l3-2M14 19l3-2" fill="none"/>',
+  sit:'<path d="M11 9q-2-2 0-4.500M16 9q-2-2 0-4.500" fill="none"/><path d="M7 12.500h15V19a6.500 6.500 0 0 1-6.500 6.500h-2A6.500 6.500 0 0 1 7 19z" fill="#fff"/><path d="M7 16h15v3a6.500 6.500 0 0 1-6.500 6.500h-2A6.500 6.500 0 0 1 7 19z" fill="#E9B93E"/><path d="M22 15h1.500a3 3 0 0 1 0 6H21.500M5 28.500h19" fill="none"/>',
+  water:'<circle cx="23" cy="9" r="4.500" fill="#E9B93E"/><path d="M3 19q3.250-5 6.500 0t6.500 0 6.500 0 6.500 0V29H3z" fill="#8CC3F0"/><path d="M3 25q3.250-4 6.500 0t6.500 0 6.500 0 6.500 0" fill="none"/>',
+  leaf:'<path d="M16 20Q4 19 4.500 9 10 5 16 10 22 5 27.500 9 28 19 16 20z" fill="#E9B93E"/><path d="M16 10v6M16 20v8.500M10 12l3 4M22 12l-3 4" fill="none"/>',
+  view:'<path d="M16 2.500V7" fill="none"/><path d="M16 7l-1.500 9-5.500 12.500h4.500q2.500-6 5 0H23L17.500 16z" fill="#E9574D"/><path d="M12 15.500h8v3h-8z" fill="#fff"/>',
+  eat:'<path d="M16 4.500q3 0 5 4l6 11q2 6-4 7.500H9q-6-1.500-4-7.500l6-11q2-4 5-4z" fill="#fff"/><path d="M11 19.500h10V27H11z" fill="#173A7A"/><circle cx="13.500" cy="14" r=".8" fill="#173A7A" stroke="none"/><circle cx="18.500" cy="14" r=".8" fill="#173A7A" stroke="none"/>',
+  rain:'<path d="M16 3v2" fill="none"/><path d="M3.500 17a12.500 12.500 0 0 1 25 0q-3.100-3-6.250 0-3.100-3-6.250 0-3.100-3-6.250 0-3.100-3-6.250 0z" fill="#2F6FD0"/><path d="M16 17v8.500a3 3 0 0 1-6 0" fill="none"/>',
+  pin:'<path d="M16 29q-9-9.500-9-16a9 9 0 0 1 18 0q0 6.500-9 16z" fill="#E9574D"/><circle cx="16" cy="13" r="3.500" fill="#fff"/>'
+};
+function ico(k){return '<svg class="ic" viewBox="0 0 32 32" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+ICONS[k]+'</svg>'}
+var BEST={am:'上午',pm:'下午',sunset:'黄昏',night:'夜里'};
+var KEY='tokyo-sanpo-v1';
+var $=function(s){return document.querySelector(s)};
+var byId={}; PLACES.forEach(function(p){byId[p.id]=p});
+var QS=new URLSearchParams(location.search);
+
+/* ---------- 状态 ---------- */
+function blank(){return {st:{},stamps:{},mood:null,quests:{},qd:null,loc:null}}
+function load(){try{return Object.assign(blank(),JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return blank()}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+var S=load();
+var W={temp:null,code:null,sunset:'16:32'};
+var rnd={}; PLACES.forEach(function(p){rnd[p.id]=Math.random()});
+var heroIdx=0, filter='all', lastDecided=[], justStamped=null;
+
+/* ---------- 时间（一律按东京时间） ---------- */
+function tk(){ if(QS.get('now')) return new Date(QS.get('now')); var d=new Date(); return new Date(d.getTime()+(d.getTimezoneOffset()+540)*60000) }
+function dayNo(){var t=tk(); var d0=new Date(t.getFullYear(),t.getMonth(),t.getDate()); return Math.round((d0-TRIP_START)/864e5)+1}
+function slot(){var t=tk(), m=t.getHours()*60+t.getMinutes(), ss=sunsetMin(); if(m<12*60) return 'am'; if(m<ss-70) return 'pm'; if(m<ss+40) return 'sunset'; return 'night'}
+function sunsetMin(){var a=W.sunset.split(':'); return a[0]*60+ +a[1]}
+function isRain(){return W.code!=null && W.code>=51}
+function wText(c){if(c==null) return ''; if(c===0) return '晴'; if(c<=3) return '多云'; if(c<=48) return '有雾'; if(c<=67) return '下雨'; if(c<=77) return '下雪'; if(c<=82) return '阵雨'; return '雷雨'}
+
+/* ---------- 位置 ---------- */
+function dist(a,b){var R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r; var x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)*Math.sin(dn/2); return 2*R*Math.asin(Math.sqrt(x))}
+function loc(){ if(QS.get('loc')){var a=QS.get('loc').split(','); return {lat:+a[0],lng:+a[1]}} if(S.loc && Date.now()-S.loc.t<45*60000) return S.loc; return null }
+function zone(){var l=loc(); if(l){ if(dist(l,{lat:35.315,lng:139.53})<14) return 'kamakura'; if(dist(l,{lat:35.68,lng:139.76})<60) return 'tokyo' } return dayNo()===KAMA_DAY?'kamakura':'tokyo'}
+function distText(km){ if(km<1.6) return '步行约 '+Math.max(2,Math.round(km*1000*1.3/78))+' 分'; return '离你约 '+(km<10?km.toFixed(1):Math.round(km))+' km' }
+
+/* ---------- 推荐 ---------- */
+function ranked(){
+  var z=zone(), l=loc(), sl=slot(), rain=isRain();
+  return PLACES.filter(function(p){return p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id]}).map(function(p){
+    var s=rnd[p.id]*1.4, why=[];
+    if(S.st[p.id]==='super'){s+=2.5; why.push('你说特别想去')} else if(S.st[p.id]==='want') s+=1.2;
+    if(l){var km=dist(l,p); s-=Math.min(km,25)*0.22; if(km<2.5) s+=1.2; why.push(distText(km))}
+    if(S.mood && p.tags.indexOf(S.mood)>=0){s+=2.6; why.push('合你「'+TAGS[S.mood][1]+'」的心情')} else if(S.mood) s-=1.5;
+    if(p.best.indexOf(sl)>=0){s+=1.6; why.push({am:'上午去正好',pm:'下午去正好',sunset:'赶得上日落',night:'夜里更好看'}[sl])} else s-=0.8;
+    if(rain){ if(p.tags.indexOf('rain')>=0){s+=2.5; why.push('下雨也不怕')} else s-=1.5 }
+    else if(p.tags.indexOf('leaf')>=0){s+=0.6; if(why.length<2) why.push('银杏红叶正当季')}
+    if(p.book) s-=0.6;
+    return {p:p,s:s,why:why};
+  }).sort(function(a,b){return b.s-a.s});
+}
+
+/* ---------- 小零件 ---------- */
+function pics(p){return (window.PHOTOS&&PHOTOS[p.id])||[]}
+function photo(p,size,i){var o=pics(p)[i||0]; if(!o) return ''; var u=o.img; if(size&&o.w>=size) u=u.replace(/\/\d+px-/,'/'+size+'px-'); return u}
+function ph(p,size,extra,i){var u=photo(p,size,i); return '<span class="ph"><i class="ico">'+ico(p.tags[0])+'</i>'+(u?'<img src="'+u+'" alt="'+p.zh+'" loading="lazy" draggable="false" crossorigin="anonymous" onerror="this.remove()">':'')+(extra||'')+'</span>'}
+function maps(p){return 'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.jp)}
+function route(p){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.jp)+'&travelmode=transit'}
+function toast(t){var el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(function(){el.classList.remove('on')},1900)}
+function hash(s){var h=0; for(var i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))|0; return Math.abs(h)}
+function stampSVG(p,cls){
+  var st=S.stamps[p.id]||{d:''}, h=hash(p.id), col=['#E9574D','#2F6FD0','#173A7A'][h%3], rot=(h%25)-12;
+  var name=p.zh.replace(/[与和].*$/,'').replace(/^(清晨的|北镰仓 |吉祥寺 )/,'').replace(/\s.*$/,'');
+  var lines=name.length<=4?[name]:[name.slice(0,Math.ceil(name.length/2)),name.slice(Math.ceil(name.length/2))];
+  var fs=lines[0].length>=5?15:lines.length>1?17:(name.length<=2?26:21);
+  var txt=lines.map(function(t,i){return '<text x="50" y="'+(lines.length>1?44+i*19:52)+'" text-anchor="middle" font-size="'+fs+'">'+t+'</text>'}).join('');
+  return '<svg class="stamp '+(cls||'')+'" viewBox="0 0 100 100" style="transform:rotate('+rot+'deg)" fill="none" stroke="'+col+'"><circle cx="50" cy="50" r="46" stroke-width="3"/><circle cx="50" cy="50" r="40" stroke-width="1.2" stroke-dasharray="2 3"/>'+
+    '<g fill="'+col+'" stroke="none" font-family="ZCOOL KuaiLe,sans-serif">'+txt+'<text x="50" y="24" text-anchor="middle" font-size="9" font-family="Fredoka,sans-serif" letter-spacing="1.5">'+(p.zone==='kamakura'?'KAMAKURA':'TOKYO')+'</text><text x="50" y="80" text-anchor="middle" font-size="11" font-family="Fredoka,sans-serif">'+st.d+'</text></g></svg>';
+}
+
+/* ---------- 今天 ---------- */
+function renderStatus(){
+  var d=dayNo(), t=tk(), m=t.getHours()*60+t.getMinutes(), left=sunsetMin()-m, h=[];
+  h.push('<span class="chip hot">'+(d<1?'还有 '+(1-d)+' 天出发':d>TRIP_DAYS?'旅行结束啦':'Day '+d+' / '+TRIP_DAYS)+'</span>');
+  if(W.temp!=null) h.push('<span class="chip">'+wText(W.code)+' '+Math.round(W.temp)+'°</span>');
+  h.push('<span class="chip'+(left>0&&left<=90?' blue':'')+'">'+(left>180?'日落 '+W.sunset:left>0?'日落还有 '+(left>=60?Math.floor(left/60)+' 小时 ':'')+(left%60)+' 分':'天黑了，去看夜景')+'</span>');
+  h.push('<button class="chip" data-act="locate">'+ico('pin')+(loc()?'已定位':'用我的位置')+'</button>');
+  $('#status').innerHTML=h.join('');
+  $('#zoneBanner').innerHTML=zone()==='kamakura'?'<div class="banner">'+ico('water')+'今天是镰仓日，推荐都换成了镰仓和江之岛。</div>':'';
+}
+function renderMoods(){
+  $('#moods').innerHTML=Object.keys(TAGS).map(function(k){return '<button class="mood'+(S.mood===k?' on':'')+'" data-act="mood" data-v="'+k+'"><b>'+ico(k)+'</b><span>'+TAGS[k][1]+'</span></button>'}).join('');
+}
+function heroCard(x,tape){
+  var p=x.p;
+  return '<div class="card hero"><span class="tape">'+tape+'</span><button style="display:block;width:100%" data-act="open" data-id="'+p.id+'" aria-label="查看'+p.zh+'">'+ph(p,960,'<span class="area">'+p.area+'</span>'+(pics(p).length>1?'<span class="cnt">'+pics(p).length+' 张照片</span>':''))+'</button>'+
+    '<h3>'+p.zh+'</h3>'+(x.why.length?'<p class="why">'+x.why.slice(0,2).join(' · ')+'</p>':'')+'<p class="blurb">'+p.blurb+'</p>'+
+    '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener">带我去</a>'+(tape==='现在可以'?'<button class="btn" data-act="next">换一个</button>':'<button class="btn" data-act="open" data-id="'+p.id+'">看详情</button>')+'</div></div>';
+}
+function renderHero(){
+  var r=ranked();
+  if(!r.length){$('#hero').innerHTML='<div class="card empty">这一片的池子空了。<br><span class="muted">去「地点」里把划掉的捞回来，或者换个心情。</span></div>';return}
+  if(heroIdx>=r.length) heroIdx=0;
+  $('#hero').innerHTML=heroCard(r[heroIdx],'现在可以');
+}
+function todayKey(){var t=tk(); return t.getFullYear()+'-'+(t.getMonth()+1)+'-'+t.getDate()}
+function pickQuest(force){
+  if(!force && S.qd && S.qd.d===todayKey()) return;
+  var open=QUESTS.map(function(q,i){return i}).filter(function(i){return !S.quests[i] && !(S.qd&&S.qd.i===i)});
+  if(!open.length) open=QUESTS.map(function(q,i){return i});
+  S.qd={d:todayKey(),i:open[Math.floor(Math.random()*open.length)]}; save();
+}
+function renderQuest(){
+  pickQuest(); var i=S.qd.i, done=!!S.quests[i];
+  $('#quest').innerHTML='<div class="card quest"><span class="muted">今天不去哪里也行，做一件小事：</span><p>'+QUESTS[i]+'</p><div class="row">'+
+    '<button class="btn '+(done?'':'coral')+'" data-act="qdone">'+(done?'已完成 ✓':'做到了')+'</button><button class="btn" data-act="qnext">换一件</button></div></div>';
+}
+function renderProgress(){
+  var n=Object.keys(S.stamps).length, q=Object.keys(S.quests).length;
+  $('#progress').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">盖了 '+n+' 个章 · 做了 '+q+' 件小事</b><div class="prog"><i style="width:'+Math.round(n/PLACES.length*100)+'%"></i></div><p class="muted" style="margin:8px 0 0">到了一个地方，在它的详情里按「盖章」。</p></div>';
+}
+function renderHome(){renderStatus();renderMoods();renderHero();renderQuest();renderProgress()}
+
+/* ---------- 扭蛋 ---------- */
+var spinning=false;
+function gacha(){
+  if(spinning) return; var r=ranked();
+  if(!r.length){toast('池子空了，先去地点里捞几个回来');return}
+  spinning=true; var pool=r.slice(0,Math.max(3,Math.ceil(r.length*0.6))), x=pool[Math.floor(Math.random()*pool.length)];
+  var m=$('#machine'), c=$('#capsule'), out=$('#gachaResult');
+  out.innerHTML=''; c.className='capsule'; c.firstElementChild.style.background=['#E9B93E','#E9574D','#2F6FD0','#8CC3F0','#F6B9B2'][Math.floor(Math.random()*5)];
+  m.classList.remove('spin'); void m.getBoundingClientRect(); m.classList.add('spin');
+  setTimeout(function(){c.classList.add('drop')},850);
+  setTimeout(function(){c.classList.add('open')},1650);
+  setTimeout(function(){out.innerHTML=heroCard(x,'扭到了'); $('#gachaBtn').textContent='再扭一个'; spinning=false; out.scrollIntoView({behavior:'smooth',block:'center'})},2050);
+}
+
+/* ---------- 滑卡 ---------- */
+var deckOrder=PLACES.map(function(p){return p.id}).sort(function(a,b){return rnd[a]-rnd[b]});
+function queue(){return deckOrder.filter(function(id){return !S.st[id] && !S.stamps[id]}).map(function(id){return byId[id]})}
+function renderSwipe(){
+  var q=queue(), el=$('#deck');
+  $('#swipeBtns').style.visibility=q.length?'visible':'visible';
+  if(!q.length){el.innerHTML='<div class="card empty" style="margin-top:30px">都挑完啦。<br><span class="muted">想改主意的话，去「地点」里点开任何一个重新选。</span></div>';return}
+  el.innerHTML=q.slice(0,3).map(function(p,i){
+    return '<div class="scard" data-d="'+i+'" data-id="'+p.id+'" style="z-index:'+(3-i)+'">'+(i===0?'<span class="lab y">想去</span><span class="lab n">不去</span><span class="lab s">特别想去</span>':'')+
+      ph(p,960,'<span class="area">'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+'</span>')+'<h3>'+p.zh+'</h3><p>'+p.blurb+'</p><p class="muted">还剩 '+(q.length-i)+' 张 · 点一下看详情</p></div>'}).reverse().join('');
+  bindSwipe(el.lastElementChild);
+}
+function decide(id,v){S.st[id]=v; lastDecided.push(id); save(); renderSwipe()}
+function flyTop(v){
+  var c=$('#deck .scard[data-d="0"]'); if(!c) return; var id=c.dataset.id;
+  c.classList.add('fly'); c.style.opacity='0';
+  c.style.transform=v==='want'?'translate(130%,-20px) rotate(24deg)':v==='skip'?'translate(-130%,-20px) rotate(-24deg)':'translate(0,-120%) rotate(4deg)';
+  setTimeout(function(){decide(id,v); toast({want:'留下了 ♥',skip:'划掉了',super:'特别想去 ★'}[v])},260);
+}
+function bindSwipe(c){
+  var sx,sy,dx=0,dy=0,down=false,moved=false;
+  c.addEventListener('pointerdown',function(e){down=true;moved=false;sx=e.clientX;sy=e.clientY;dx=dy=0;c.classList.remove('snap');try{c.setPointerCapture(e.pointerId)}catch(_){}});
+  c.addEventListener('pointermove',function(e){
+    if(!down) return; dx=e.clientX-sx; dy=e.clientY-sy; if(Math.abs(dx)+Math.abs(dy)>8) moved=true;
+    c.style.transform='translate('+dx+'px,'+dy+'px) rotate('+(dx/16)+'deg)';
+    var up=dy<-50&&Math.abs(dx)<70;
+    c.querySelector('.lab.y').style.opacity=up?0:Math.max(0,Math.min(1,dx/90));
+    c.querySelector('.lab.n').style.opacity=up?0:Math.max(0,Math.min(1,-dx/90));
+    c.querySelector('.lab.s').style.opacity=up?Math.min(1,-dy/110):0;
+  });
+  function end(){
+    if(!down) return; down=false;
+    if(!moved){openDetail(c.dataset.id);return}
+    if(dy<-110&&Math.abs(dx)<90) return flyTop('super');
+    if(dx>90) return flyTop('want'); if(dx<-90) return flyTop('skip');
+    c.classList.add('snap'); c.style.transform=''; [].forEach.call(c.querySelectorAll('.lab'),function(l){l.style.opacity=0});
+  }
+  c.addEventListener('pointerup',end); c.addEventListener('pointercancel',function(){moved=true;dx=dy=0;end()});
+}
+
+/* ---------- 地点 ---------- */
+var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
+function renderList(){
+  $('#filters').innerHTML=FILTERS.map(function(f){return '<button class="chip fchip'+(filter===f[0]?' on':'')+'" data-act="filter" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('');
+  var list=PLACES.filter(function(p){var st=S.st[p.id];
+    if(filter==='all') return true; if(filter==='tokyo'||filter==='kamakura') return p.zone===filter;
+    if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0});
+  $('#grid').innerHTML=list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
+    return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500)+'<b>'+p.zh+'</b><small>'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></button>'}).join('')
+    :'<div class="card empty" style="grid-column:1/-1">这里还是空的</div>';
+}
+
+/* ---------- 集章 ---------- */
+function renderBook(){
+  var n=Object.keys(S.stamps).length;
+  $('#bookTop').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:20px">'+(n?'已经盖了 '+n+' 个章':'还没有章')+'</b><p class="muted" style="margin:4px 0 0">'+(n?'点开任何一个章，可以给那天写一句话。':'到了一个地方，打开它的详情按「盖章」，这里就会多一枚。')+'</p></div>';
+  var got=PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t}), rest=PLACES.filter(function(p){return !S.stamps[p.id] && S.st[p.id]!=='skip'});
+  $('#book').innerHTML=got.concat(rest).map(function(p){return S.stamps[p.id]?'<button class="slot got" data-act="open" data-id="'+p.id+'">'+stampSVG(p,justStamped===p.id?'thud':'')+'</button>':'<button class="slot" data-act="open" data-id="'+p.id+'">'+p.zh+'</button>'}).join('');
+  justStamped=null;
+  var done=Object.keys(S.quests);
+  renderOffline();
+  $('#qlist').innerHTML=done.length?done.map(function(i){return '<li class="done">'+QUESTS[i]+'</li>'}).join(''):'<li>还没有。「今天」页每天会给一件小事。</li>';
+}
+
+/* ---------- 离线照片 ---------- */
+function allPhotoUrls(){var u=[]; PLACES.forEach(function(p){var a=pics(p); if(a.length) u.push(photo(p,500,0)); a.forEach(function(o,i){u.push(photo(p,960,i))})}); return u.filter(function(x,i,arr){return x&&arr.indexOf(x)===i})}
+var saving=false;
+function renderOffline(msg){
+  var el=$('#offline'); if(!el) return;
+  if(!('caches' in window)){el.innerHTML='<div class="card"><span class="muted">这个浏览器不支持离线保存。</span></div>';return}
+  var urls=allPhotoUrls();
+  caches.open('sanpo-photos').then(function(c){return c.keys()}).then(function(keys){
+    var have={}; keys.forEach(function(k){have[k.url]=1}); var n=urls.filter(function(u){return have[u]}).length;
+    el.innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">已存 '+n+' / '+urls.length+' 张</b><div class="prog"><i style="width:'+Math.round(n/urls.length*100)+'%"></i></div>'+
+      '<p class="muted" style="margin:8px 0 10px">'+(msg||'出发前在 Wi-Fi 下存一次，之后没信号也能看照片。')+'</p>'+
+      (n<urls.length?'<div class="row"><button class="btn mustard" data-act="offline">'+(saving?'正在保存…':'把照片存到手机')+'</button></div>':'')+'</div>';
+  }).catch(function(){el.innerHTML=''});
+}
+function saveOffline(){
+  if(saving) return; saving=true; var urls=allPhotoUrls(), fail=0;
+  caches.open('sanpo-photos').then(function(c){
+    return c.keys().then(function(keys){
+      var have={}; keys.forEach(function(k){have[k.url]=1}); var todo=urls.filter(function(u){return !have[u]}), i=0, done=0;
+      function next(){ if(i>=todo.length) return Promise.resolve(); var u=todo[i++];
+        return fetch(u,{mode:'cors'}).then(function(r){ if(!r.ok) throw 0; return c.put(u,r)}).catch(function(){fail++}).then(function(){done++; if(done%6===0) renderOffline('正在保存，请不要关掉页面…'); return next()}) }
+      return Promise.all([next(),next(),next()]);
+    });
+  }).then(function(){saving=false; renderOffline(fail?'有 '+fail+' 张没存下来，过一会儿再按一次。':'都存好了。'); toast(fail?'有几张没存成功':'照片都存好了')})
+    .catch(function(){saving=false; renderOffline('保存失败，换个网络再试。')});
+  renderOffline('正在保存，请不要关掉页面…');
+}
+
+/* ---------- 详情 ---------- */
+var openId=null;
+function openDetail(id){
+  var p=byId[id], st=S.st[id], sp=S.stamps[id], ps=pics(p); openId=id;
+  var l=loc(), d=l?dist(l,p):null;
+  $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button>'+(ps.length>1?'<div class="gal" id="gal">'+ps.map(function(o,i){return ph(p,960,i===0?'<span class="area">'+p.area+'</span>':'',i)}).join('')+'</div><div class="dots" id="galDots">'+ps.map(function(o,i){return '<i class="'+(i===0?'on':'')+'"></i>'}).join('')+'</div>':ph(p,960,'<span class="area">'+p.area+'</span>'))+
+    '<h3>'+p.zh+'</h3><p class="jp">'+p.jp+'</p>'+
+    '<div class="chips" style="margin:0 0 10px">'+p.tags.map(function(t){return '<span class="chip">'+ico(t)+TAGS[t][1]+'</span>'}).join('')+'</div>'+
+    '<p style="margin:0">'+p.blurb+'</p>'+
+    '<div class="tipbox"><b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
+    '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener" style="flex:1.5">Google Maps</a><a class="btn" href="'+route(p)+'" target="_blank" rel="noopener">怎么去</a></div>'+
+    '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
+    (sp?'<div class="stamped-row">'+stampSVG(p)+'<div><b style="font-family:var(--display);font-weight:400;font-size:18px">'+sp.d+' 来过这里</b><br><button class="btn small" data-act="unstamp" style="margin-top:6px">撤销盖章</button></div></div><textarea id="note" placeholder="给这一天写一句话…" aria-label="给这一天写一句话"></textarea>'
+       :'<div class="row"><button class="btn coral" data-act="stamp">盖章：我来过了</button></div>')+
+    (ps.length?'<span class="credit">照片来自 Wikimedia Commons，作者与授权：'+ps.map(function(o,i){return '<a href="https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(o.file)+'" target="_blank" rel="noopener">第 '+(i+1)+' 张</a>'}).join('、')+'</span>':'');
+  var g=$('#gal'); if(g){g.scrollLeft=0; g.addEventListener('scroll',function(){var w=g.firstElementChild.offsetWidth+8, k=Math.round(g.scrollLeft/w); [].forEach.call($('#galDots').children,function(d,i){d.classList.toggle('on',i===k)})},{passive:true})}
+  if(sp){var n=$('#note'); n.value=sp.note||''; n.addEventListener('input',function(){S.stamps[id].note=n.value; save()})}
+  $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
+}
+function closeSheet(){document.body.classList.remove('sheet-on'); openId=null; refresh()}
+
+/* ---------- 导航与事件 ---------- */
+var tab='home';
+var R={home:renderHome,gacha:function(){},swipe:renderSwipe,list:renderList,book:renderBook};
+function refresh(){R[tab]()}
+function go(t){tab=t; [].forEach.call(document.querySelectorAll('.view'),function(v){v.classList.toggle('on',v.id==='v-'+t)});
+  [].forEach.call(document.querySelectorAll('nav button'),function(b){b.classList.toggle('on',b.dataset.tab===t)}); refresh(); window.scrollTo(0,0)}
+document.addEventListener('click',function(e){
+  var nb=e.target.closest('nav button'); if(nb) return go(nb.dataset.tab);
+  var el=e.target.closest('[data-act]'); if(!el) return; var a=el.dataset.act, v=el.dataset.v;
+  if(a==='open') openDetail(el.dataset.id);
+  else if(a==='close') closeSheet();
+  else if(a==='next'){heroIdx++; renderHero()}
+  else if(a==='mood'){S.mood=S.mood===v?null:v; heroIdx=0; save(); renderMoods(); renderHero()}
+  else if(a==='locate') locate();
+  else if(a==='qdone'){ if(S.quests[S.qd.i]) delete S.quests[S.qd.i]; else {S.quests[S.qd.i]=1; toast('记下了，今天没白过')} save(); renderQuest(); renderProgress()}
+  else if(a==='qnext'){pickQuest(true); renderQuest()}
+  else if(a==='gacha') gacha();
+  else if(a==='sw') flyTop(v);
+  else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
+  else if(a==='filter'){filter=v; renderList()}
+  else if(a==='offline') saveOffline();
+  else if(a==='st'){ if(S.st[openId]===v) delete S.st[openId]; else S.st[openId]=v; save(); openDetail(openId)}
+  else if(a==='stamp'){var t=tk(); S.stamps[openId]={d:(t.getMonth()+1)+'/'+t.getDate(),t:Date.now(),note:''}; save(); justStamped=openId; var id2=openId; openDetail(id2); var s=$('#sheet .stamp'); if(s) s.classList.add('thud'); toast('盖好了！')}
+  else if(a==='unstamp'){delete S.stamps[openId]; save(); openDetail(openId)}
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&openId) closeSheet()});
+
+function locate(){
+  if(!navigator.geolocation){toast('这台设备拿不到定位');return}
+  toast('正在找你在哪…');
+  navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); heroIdx=0; renderHome(); toast(zone()==='kamakura'?'你在镰仓一带':'定位好了，按远近重新排过')},
+    function(){toast('没拿到定位，先按时间和心情推荐')},{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+}
+function weather(){
+  var z=zone()==='kamakura'?[35.32,139.55]:[35.68,139.76];
+  fetch('https://api.open-meteo.com/v1/forecast?latitude='+z[0]+'&longitude='+z[1]+'&current=temperature_2m,weather_code&daily=sunset&timezone=Asia%2FTokyo&forecast_days=1')
+    .then(function(r){return r.json()}).then(function(j){W.temp=j.current.temperature_2m; W.code=j.current.weather_code; if(j.daily&&j.daily.sunset&&j.daily.sunset[0]) W.sunset=j.daily.sunset[0].slice(11,16); if(QS.get('rain')) W.code=61; if(tab==='home') renderHome()})
+    .catch(function(){});
+}
+if(QS.get('rain')) W.code=61;
+renderHome(); weather();
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
+setInterval(function(){if(tab==='home'&&!openId) renderStatus()},60000);
+})();
+</script>
+</body>
+</html>
