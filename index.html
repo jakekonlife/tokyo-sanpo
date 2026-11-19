@@ -99,11 +99,20 @@ h2.sec::after{content:"";flex:1;height:8px;background:url("data:image/svg+xml,%3
 /* 扭蛋 */
 .gacha-wrap{text-align:center}
 .machine{width:230px;max-width:70%;display:block;margin:6px auto 0;overflow:visible}
-.knob{transform-origin:120px 216px;transition:transform .9s cubic-bezier(.3,1.6,.5,1)}
+.knob{transform-origin:82px 206px;transition:transform .9s cubic-bezier(.3,1.6,.5,1)}
 .machine.spin .knob{transform:rotate(360deg)}
-.machine.spin .caps circle{animation:jig .22s linear 4 alternate}
-.machine.spin .caps circle:nth-child(odd){animation-direction:alternate-reverse}
-@keyframes jig{from{transform:translate(-3px,3px)}to{transform:translate(4px,-5px)}}
+.machine.spin .cap{animation:jig .22s linear 4 alternate}
+.machine.spin .caps>g:nth-child(odd) .cap{animation-direction:alternate-reverse}
+@keyframes jig{from{transform:translate(-3px,3px) rotate(-8deg)}to{transform:translate(4px,-5px) rotate(10deg)}}
+.machine.spin .body{animation:shake .45s ease-in-out 2}
+@keyframes shake{25%{transform:rotate(-1.6deg)}75%{transform:rotate(1.6deg)}}
+.machine .body{transform-origin:120px 284px}
+.spark{transform-box:fill-box;transform-origin:center;animation:tw 2.6s ease-in-out infinite}
+.spark.b{animation-delay:-.9s}.spark.c{animation-delay:-1.7s}
+@keyframes tw{0%,100%{transform:scale(.55) rotate(0);opacity:.55}50%{transform:scale(1) rotate(20deg);opacity:1}}
+.chute-flap{transform-box:fill-box;transform-origin:top center}
+.machine.spin .chute-flap{animation:flap .5s ease .85s}
+@keyframes flap{40%{transform:scaleY(.35)}}
 .capsule{width:74px;height:74px;margin:-6px auto 0;position:relative;opacity:0}
 .capsule i{position:absolute;left:0;right:0;height:50%;border:var(--line)}
 .capsule i:first-child{top:0;border-radius:74px 74px 0 0;background:var(--mustard);border-bottom-width:1px}
@@ -358,22 +367,74 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
     <h2 class="sec">不知道去哪，就扭一个</h2>
     <div class="gacha-wrap">
       <svg class="machine" id="machine" viewBox="0 0 240 300" stroke="#173A7A" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
-        <circle cx="120" cy="100" r="88" fill="#EAF4FC"/>
-        <g class="caps">
-          <circle cx="78" cy="128" r="19" fill="#E9574D"/><circle cx="118" cy="140" r="19" fill="#E9B93E"/><circle cx="160" cy="128" r="19" fill="#2F6FD0"/>
-          <circle cx="96" cy="94" r="19" fill="#8CC3F0"/><circle cx="140" cy="96" r="19" fill="#F6B9B2"/><circle cx="62" cy="92" r="17" fill="#E9B93E"/>
-          <circle cx="176" cy="92" r="17" fill="#E9574D"/><circle cx="118" cy="58" r="18" fill="#fff"/><circle cx="84" cy="58" r="15" fill="#2F6FD0"/><circle cx="152" cy="60" r="15" fill="#E9B93E"/>
+        <defs>
+          <clipPath id="globeClip"><circle cx="120" cy="96" r="78"/></clipPath>
+          <pattern id="gdots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.2" fill="#173A7A" stroke="none" opacity=".28"/></pattern>
+          <!-- 一颗扭蛋：上半是颜色（跟着 color 变），下半是白的 -->
+          <g id="cap" stroke-width="2"><circle r="16" fill="#fff"/><path d="M-16 0a16 16 0 0 1 32 0z" fill="currentColor"/><circle r="16" fill="none"/><path d="M-16 0h32" fill="none" stroke-width="1.4"/><path d="M-9-6q2-5 7-6.500" fill="none" stroke="#fff" stroke-width="2.600" opacity=".9"/></g>
+        </defs>
+        <!-- 地上的影子 -->
+        <ellipse cx="122" cy="290" rx="90" ry="7" fill="#173A7A" opacity=".16" stroke="none"/>
+        <g class="body">
+          <!-- 玻璃罩和里面的扭蛋 -->
+          <circle cx="120" cy="96" r="80" fill="#EAF4FC"/>
+          <g clip-path="url(#globeClip)"><g class="caps">
+            <g transform="translate(88 162) rotate(-15)"><use class="cap" href="#cap" color="#E9B93E"/></g>
+            <g transform="translate(122 166) rotate(12)"><use class="cap" href="#cap" color="#E9574D"/></g>
+            <g transform="translate(156 160) rotate(28)"><use class="cap" href="#cap" color="#8CC3F0"/></g>
+            <g transform="translate(58 138) rotate(32)"><use class="cap" href="#cap" color="#F6B9B2"/></g>
+            <g transform="translate(92 132) rotate(-24)"><use class="cap" href="#cap" color="#2F6FD0"/></g>
+            <g transform="translate(126 136) rotate(16)"><use class="cap" href="#cap" color="#E9B93E"/></g>
+            <g transform="translate(160 132) rotate(-12)"><use class="cap" href="#cap" color="#E9574D"/></g>
+            <g transform="translate(190 140) rotate(40)"><use class="cap" href="#cap" color="#2F6FD0"/></g>
+            <g transform="translate(70 104) rotate(-36)"><use class="cap" href="#cap" color="#E9574D"/></g>
+            <g transform="translate(104 100) rotate(20)"><use class="cap" href="#cap" color="#8CC3F0"/></g>
+            <g transform="translate(138 104) rotate(-16)"><use class="cap" href="#cap" color="#F6B9B2"/></g>
+            <g transform="translate(172 100) rotate(30)"><use class="cap" href="#cap" color="#E9B93E"/></g>
+            <g transform="translate(112 72) rotate(8)"><use class="cap" href="#cap" color="#2F6FD0"/></g>
+            <g transform="translate(148 70) rotate(-26)"><use class="cap" href="#cap" color="#E9574D"/></g>
+          </g></g>
+          <!-- 玻璃反光 -->
+          <path d="M60 64q18-34 60-42" fill="none" stroke="#fff" stroke-width="6"/>
+          <circle cx="54" cy="82" r="3.500" fill="#fff" stroke="none"/>
+          <path d="M190 104q-3 28-22 46" fill="none" stroke="#fff" stroke-width="3.500" opacity=".7"/>
+          <circle cx="120" cy="96" r="80" fill="none"/>
+          <!-- 顶盖 -->
+          <path d="M98 18q22-20 44 0z" fill="#173A7A"/><circle cx="120" cy="6" r="4.500" fill="#E9B93E" stroke-width="2"/>
+          <!-- 腿 -->
+          <rect x="58" y="258" width="14" height="24" rx="4" fill="#173A7A"/><rect x="168" y="258" width="14" height="24" rx="4" fill="#173A7A"/>
+          <rect x="52" y="278" width="26" height="8" rx="4" fill="#173A7A"/><rect x="162" y="278" width="26" height="8" rx="4" fill="#173A7A"/>
+          <!-- 机身：先画一层错开的影子 -->
+          <rect x="44" y="176" width="164" height="96" rx="18" fill="#173A7A"/>
+          <rect x="38" y="170" width="164" height="96" rx="18" fill="#E9574D" stroke="none"/>
+          <path d="M38 240h164v8a18 18 0 0 1-18 18H56a18 18 0 0 1-18-18z" fill="#C8463D" stroke="none"/>
+          <path d="M170 172h14a18 18 0 0 1 18 18v50h-32z" fill="url(#gdots)" stroke="none"/>
+          <rect x="38" y="170" width="164" height="96" rx="18" fill="none"/>
+          <path d="M38 240h164" fill="none"/>
+          <path d="M52 184h18" fill="none" stroke="#fff" stroke-width="4" opacity=".75"/>
+          <!-- 连接罩子和机身的环 -->
+          <rect x="30" y="160" width="180" height="18" rx="9" fill="#173A7A"/>
+          <g fill="#E9B93E" stroke="none"><circle cx="48" cy="169" r="2.600"/><circle cx="84" cy="169" r="2.600"/><circle cx="120" cy="169" r="2.600"/><circle cx="156" cy="169" r="2.600"/><circle cx="192" cy="169" r="2.600"/></g>
+          <!-- 投币口和价钱 -->
+          <rect x="136" y="188" width="44" height="40" rx="9" fill="#FFFCF3"/>
+          <rect x="153" y="194" width="10" height="16" rx="3.500" fill="#173A7A"/>
+          <text x="158" y="223" text-anchor="middle" font-size="10" font-family="Fredoka,sans-serif" font-weight="700" fill="#173A7A" stroke="none">100円</text>
+          <!-- 旋钮（影子不转，旋钮会转） -->
+          <circle cx="85" cy="209" r="21" fill="#173A7A"/>
+          <g class="knob"><circle cx="82" cy="206" r="21" fill="#E9B93E"/><circle cx="82" cy="206" r="15" fill="none" stroke-width="1.400" stroke-dasharray="3 3.500"/><rect x="76" y="188" width="12" height="36" rx="6" fill="#fff"/><circle cx="82" cy="206" r="2.600" fill="#173A7A" stroke="none"/></g>
+          <!-- 出口 -->
+          <rect x="94" y="232" width="52" height="28" rx="10" fill="#173A7A"/>
+          <path class="chute-flap" d="M100 238h40v10a6 6 0 0 1-6 6h-28a6 6 0 0 1-6-6z" fill="#FFFCF3" stroke-width="1.800"/>
+          <path d="M106 243h28" fill="none" stroke-width="1.400" opacity=".5"/>
         </g>
-        <path d="M70 48q22-22 52-22" fill="none" stroke="#fff" stroke-width="5"/>
-        <rect x="38" y="172" width="164" height="100" rx="16" fill="#E9574D"/>
-        <rect x="38" y="172" width="164" height="14" rx="7" fill="#173A7A"/>
-        <g class="knob"><circle cx="120" cy="216" r="23" fill="#E9B93E"/><rect x="114" y="197" width="12" height="38" rx="6" fill="#fff"/></g>
-        <rect x="90" y="250" width="60" height="22" rx="8" fill="#173A7A"/>
-        <path d="M56 272v14M184 272v14" stroke-width="8"/>
+        <!-- 闪闪 -->
+        <path class="spark" d="M22 50q1.500-6 7.500-7.500-6-1.500-7.500-7.500-1.500 6-7.500 7.500 6 1.500 7.500 7.500z" fill="#fff" stroke-width="1.600"/>
+        <path class="spark b" d="M220 34q1.200-5 6-6-4.800-1.200-6-6-1.200 4.800-6 6 4.800 1 6 6z" fill="#E9B93E" stroke-width="1.600"/>
+        <path class="spark c" d="M218 132q1-4 5-5-4-1-5-5-1 4-5 5 4 1 5 5z" fill="#fff" stroke-width="1.400"/>
       </svg>
       <div class="capsule" id="capsule"><i></i><i></i></div>
       <div id="gachaResult"></div>
-      <div class="row" style="margin-top:18px"><button class="btn mustard" data-act="gacha" id="gachaBtn">扭一下</button></div>
+      <div class="row" style="margin-top:18px"><button class="btn coral" data-act="gacha" id="gachaBtn">扭一下</button></div>
       <p class="muted" style="margin-top:12px">会从「今天」的推荐里随机掉一个出来</p>
     </div>
   </section>
