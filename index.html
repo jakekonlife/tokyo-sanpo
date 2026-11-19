@@ -250,6 +250,10 @@ input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radiu
 .prow small{opacity:.7;font-size:12px}
 .prow.done b{text-decoration:line-through;opacity:.6}
 .prow .tick{margin-left:auto;flex:none;font-family:var(--display);color:var(--coral);font-size:15px}
+.hop{font-size:12px;opacity:.7;margin:0 0 0 12px;padding:2px 0 2px 14px;border-left:2px dashed rgba(23,58,122,.4);line-height:18px}
+.hop+.prow{border-top:0}
+.daysum{margin:0 0 4px;font-size:12.5px}
+.preview .prow{pointer-events:none}
 .prow .num{flex:none;width:26px;height:26px;border-radius:50%;color:#fff;border:var(--line);display:grid;place-items:center;font:700 13px/1 var(--latin)}
 
 /* 手机上点按钮、点输入框时不要自动放大（双指缩放照常可以） */
@@ -669,16 +673,28 @@ function delPlace(id){
 var WK=['一','二','三','四','五','六','日'], listMode='list';
 function dayLabel(d){return '11/'+(15+d)+' 周'+WK[d-1]}
 function planned(d){return PLACES.filter(function(p){return S.plan[p.id]===d})}
-function prow(p,n,col){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(n?'<span class="num" style="background:'+(sp?'#9aa5b8':col||'var(--coral)')+'">'+n+'</span>':'')+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':'')+'</button>'}
+function prow(p,n,col,tag){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(n?'<span class="num" style="background:'+(sp?'#9aa5b8':col||'var(--coral)')+'">'+n+'</span>':'')+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':tag?'<span class="tick" style="color:var(--blue)">'+tag+'</span>':'')+'</button>'}
 function daySelector(id){return '<div class="days">'+WK.map(function(w,i){var d=i+1; return '<button data-act="plan" data-v="'+d+'" class="'+(S.plan[id]===d?'on':'')+(d===KAMA_DAY?' k':'')+'" aria-pressed="'+(S.plan[id]===d)+'" aria-label="'+dayLabel(d)+(d===KAMA_DAY?' 镰仓日':'')+'">'+(15+d)+'<small>周'+w+'</small></button>'}).join('')+'</div>'}
 function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=routeOrder(planned(d).filter(function(p){return !S.stamps[p.id]})); if(!a.length) return '';
-  return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。'+(a.length>1?'已经按顺路排好。':'')+'</p>'+numbered(a,d)+dayFoot(d,a)+'</div>'}
-function numbered(a,d){var k=0, many=a.filter(hasPos).length>1; return a.map(function(p){return prow(p,many&&hasPos(p)?++k:0,DAYC[d-1])}).join('')}
+  return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。'+(a.length>1?'已经按顺路排好。':'')+'</p>'+sumLine(a)+numbered(a,d)+dayFoot(d,a)+'</div>'}
+// 列表里两站之间写上路上大概多久；fresh 里有的地点标「新排的」
+function numbered(a,d,fresh){var k=0, many=a.filter(hasPos).length>1, prev=null, h='';
+  a.forEach(function(p){ if(prev&&hasPos(p)) h+='<div class="hop">'+hopText(hopMin(prev,p))+'</div>'; h+=prow(p,many&&hasPos(p)?++k:0,DAYC[d-1],fresh&&fresh[p.id]?'新排的':''); if(hasPos(p)) prev=p });
+  return h}
+
+/* ---------- 路上时间（按直线距离粗估，不是实际路线） ---------- */
+// 1.5 km 以内算走路（每公里约 13 分钟）；再远算坐电车：走去车站加等车约 15 分钟，再按距离加
+function hopMin(a,b){var km=dist(a,b)*1.3; if(km<=1.5) return {walk:true,m:Math.max(3,Math.round(km*13))}; return {walk:false,m:Math.round((15+Math.min(km,10)*2.2+Math.max(0,km-10))/5)*5}}
+function travelMin(a){var pos=a.filter(hasPos), t=0; for(var i=1;i<pos.length;i++) t+=hopMin(pos[i-1],pos[i]).m; return t}
+function minText(m){return m<60?m+' 分钟':(Math.round(m/30)/2)+' 小时'}
+function hopText(h){return (h.walk?'走路':'坐车')+'约 '+minText(h.m)}
+function sumLine(a){var stay=a.reduce(function(t,p){return t+p.mins},0), tr=travelMin(a);
+  return '<p class="muted daysum">停留约 '+minText(stay)+(tr?' · 路上约 '+minText(tr)+' · 一共约 '+minText(stay+tr):'')+'</p>'}
 function renderPlan(){
-  var today=dayNo(), n=Object.keys(S.plan).length, h='<h2 class="sec">小排程</h2><p class="muted" style="margin:-4px 0 12px">'+(n?'只是大概的打算，随时可以改。点开地点可以换一天或者拿掉。每天会按顺路排好顺序。':'还没排。点开任何一个地点，在「大概哪天去」里选一天，这里就会出现。')+'</p>'+
-    (n?'<div class="row" style="margin:-2px 0 16px"><button class="btn mustard" data-act="map" data-v="0">'+ico('pin')+'整趟排程看地图</button></div>':'');
+  var today=dayNo(), n=Object.keys(S.plan).length, cand=autoCands().length, h='<h2 class="sec">小排程</h2><p class="muted" style="margin:-4px 0 12px">'+(n?'只是大概的打算，随时可以改。点开地点可以换一天或者拿掉。每天会按顺路排好顺序，路上时间是粗估。':cand?'还没排。可以按「帮我排」，或者点开地点在「大概哪天去」里选一天。':'还没排。先在「挑一挑」里选想去的，或者点开地点在「大概哪天去」里选一天。')+'</p>'+
+    (n||cand?'<div class="row" style="margin:-2px 0 16px">'+(cand?'<button class="btn coral" data-act="auto">帮我排 '+cand+' 个</button>':'')+(n?'<button class="btn mustard" data-act="map" data-v="0">'+ico('pin')+'整趟看地图</button>':'')+'</div>':'');
   for(var d=1;d<=TRIP_DAYS;d++){var a=routeOrder(planned(d)), mins=a.reduce(function(t,p){return t+p.mins},0);
-    h+='<div class="card dayc'+(d===today?' today':'')+'"><h3>'+dayLabel(d)+(d===today?'<span class="chip hot">今天</span>':'')+(d===KAMA_DAY?'<span class="chip">镰仓日</span>':'')+(a.length?'<span class="muted" style="font-family:var(--body);margin-left:auto">'+a.length+' 个 · 约 '+(Math.round(mins/30)/2)+' 小时</span>':'')+'</h3>'+(a.length?numbered(a,d)+dayFoot(d,a):'<p class="muted" style="margin:2px 0 0">空着，随便走走</p>')+'</div>'}
+    h+='<div class="card dayc'+(d===today?' today':'')+'"><h3>'+dayLabel(d)+(d===today?'<span class="chip hot">今天</span>':'')+(d===KAMA_DAY?'<span class="chip">镰仓日</span>':'')+(a.length?'<span class="muted" style="font-family:var(--body);margin-left:auto">'+a.length+' 个</span>':'')+'</h3>'+(a.length?sumLine(a)+numbered(a,d)+dayFoot(d,a):'<p class="muted" style="margin:2px 0 0">空着，随便走走</p>')+'</div>'}
   var loose=PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super') && !S.plan[p.id] && !S.stamps[p.id]});
   if(loose.length) h+='<h2 class="sec">想去但还没排</h2><div class="card dayc">'+loose.map(function(p){return prow(p)}).join('')+'</div>';
   $('#planPane').innerHTML=h;
@@ -716,23 +732,23 @@ function mapSheet(){
     '<div class="chips mapdays" style="margin:8px 0 0"><button class="chip'+(d?'':' on')+'" data-act="mapday" data-v="0">全部</button>'+
     WK.map(function(w,i){var k=i+1, n=planned(k).length; return '<button class="chip'+(d===k?' on':'')+'" data-act="mapday" data-v="'+k+'"'+(n?'':' disabled style="opacity:.4"')+'><i style="background:'+DAYC[i]+'"></i>'+(15+k)+' 日</button>'}).join('')+'</div>'+
     '<div class="mapbox" id="mapBox"></div><p class="muted" id="mapNote" style="margin:0 0 6px">'+(loose.length?'白色小点是想去但还没排的地点，点一下可以看看'+(d?'、排进这天':'')+'。':'')+'</p>';
-  sets.forEach(function(x){ h+=(d?'':'<h4 class="mine">'+dayLabel(x.d)+(x.d===KAMA_DAY?' · 镰仓日':'')+'</h4>')+'<div class="card dayc">'+numbered(x.a,x.d)+'<div class="row" style="margin-top:10px">'+gbtn(x.a)+'</div></div>' });
+  sets.forEach(function(x){ h+=(d?'':'<h4 class="mine">'+dayLabel(x.d)+(x.d===KAMA_DAY?' · 镰仓日':'')+'</h4>')+'<div class="card dayc">'+sumLine(x.a)+numbered(x.a,x.d)+'<div class="row" style="margin-top:10px">'+gbtn(x.a)+'</div></div>' });
   if(!sets.length) h+='<div class="card empty">这天还没排地点。<br><span class="muted">点地图上的白点，或者在地点详情里选「大概哪天去」。</span></div>';
   $('#sheet').innerHTML=h;
   loadLeaflet().then(function(L){ setTimeout(function(){ if(tok===mapTok&&openId==='map') drawMap(L,sets,loose,d) },380) },
     function(){var n=$('#mapNote'); if(n&&tok===mapTok) n.textContent='地图要联网才能打开（打开过一次之后，看过的地方会存到手机）。可以先用下面的 Google 路线。'});
 }
-function popHTML(p,d,isLoose){return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+
-  '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(isLoose&&d?'<button class="btn small coral" data-act="mapadd" data-id="'+p.id+'" data-v="'+d+'" style="flex:1">排进这天</button>':'')+'</div>'}
-function drawMap(L,sets,loose,d){
+function popHTML(p,d,isLoose,preview){return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+(preview?'':
+  '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(isLoose&&d?'<button class="btn small coral" data-act="mapadd" data-id="'+p.id+'" data-v="'+d+'" style="flex:1">排进这天</button>':'')+'</div>')}
+function drawMap(L,sets,loose,d,preview){
   var box=$('#mapBox'); if(!box) return;
   MAP=L.map(box,{zoomControl:true});
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(MAP);
   var pts=[];
-  loose.forEach(function(p){L.circleMarker([p.lat,p.lng],{radius:7,color:'#173A7A',weight:2,fillColor:'#fff',fillOpacity:1}).addTo(MAP).bindPopup(popHTML(p,d,true)); if(!sets.length) pts.push([p.lat,p.lng])});
+  loose.forEach(function(p){L.circleMarker([p.lat,p.lng],{radius:7,color:'#173A7A',weight:2,fillColor:'#fff',fillOpacity:1}).addTo(MAP).bindPopup(popHTML(p,d,true,preview)); if(!sets.length) pts.push([p.lat,p.lng])});
   sets.forEach(function(x){var col=DAYC[x.d-1], line=[], k=0, many=x.a.filter(hasPos).length>1;
     x.a.filter(hasPos).forEach(function(p){var ll=[p.lat,p.lng]; line.push(ll); pts.push(ll); k++;
-      L.marker(ll,{icon:L.divIcon({className:'pin',html:'<b style="background:'+(S.stamps[p.id]?'#9aa5b8':col)+'">'+(many?k:'')+'</b>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-14]}),zIndexOffset:1000}).addTo(MAP).bindPopup(popHTML(p,x.d,false))});
+      L.marker(ll,{icon:L.divIcon({className:'pin',html:'<b style="background:'+(S.stamps[p.id]?'#9aa5b8':col)+'">'+(many?k:'')+'</b>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-14]}),zIndexOffset:1000}).addTo(MAP).bindPopup(popHTML(p,x.d,false,preview))});
     if(line.length>1) L.polyline(line,{color:col,weight:3,dashArray:'6 7',opacity:.85}).addTo(MAP)});
   if(pts.length>1) MAP.fitBounds(pts,{padding:[34,34],maxZoom:16}); else if(pts.length) MAP.setView(pts[0],15); else MAP.setView(d===KAMA_DAY?[35.32,139.55]:[35.68,139.76],d===KAMA_DAY?13:11);
   // Leaflet 的弹窗会拦住点击冒泡，所以按钮在这里单独接
@@ -741,6 +757,67 @@ function drawMap(L,sets,loose,d){
     else if(b.dataset.act==='mapadd'){var pp=byId[b.dataset.id], dd=+b.dataset.v; S.plan[pp.id]=dd; save(); toast(planMsg(pp,dd)); mapSheet()}
   })})});
 }
+
+/* ---------- 帮我排：把想去但还没排的地点按位置分进剩下的日子 ---------- */
+var AP=null;
+function autoCands(){return PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super')&&!S.plan[p.id]&&!S.stamps[p.id]})}
+function dayLoad(a){return a.reduce(function(t,p){return t+p.mins},0)+travelMin(routeOrder(a))}
+// 每天大约 7 小时（含路上）；今天只算到晚上 9 点还剩多少
+function capOf(d){ if(d!==dayNo()) return 420; var t=tk(), left=21*60-(t.getHours()*60+t.getMinutes()); return Math.max(0,Math.min(420,left)) }
+function centroid(a){var pos=a.filter(hasPos); if(!pos.length) return null; return {lat:pos.reduce(function(s,p){return s+p.lat},0)/pos.length,lng:pos.reduce(function(s,p){return s+p.lng},0)/pos.length}}
+function autoPlan(){
+  var first=Math.max(1,dayNo()), days=[], lists={}, res={}, left=[];
+  for(var d=first;d<=TRIP_DAYS;d++){days.push(d); lists[d]=planned(d).slice()}
+  // 特别想去的排前面；同一级里随机，这样「重新排」会换一种分法
+  var cands=autoCands().map(function(p){return {p:p,r:Math.random()-(S.st[p.id]==='super'?1:0)}}).sort(function(a,b){return a.r-b.r}).map(function(x){return x.p});
+  function fits(d,p){var a=lists[d].concat([p]); return dayLoad(a)<=capOf(d) || (!lists[d].length&&capOf(d)>=240)}
+  function put(d,p){lists[d].push(p); res[p.id]=d}
+  // 镰仓的地点只放镰仓日
+  var kamaOk=days.indexOf(KAMA_DAY)>=0;
+  cands.filter(function(p){return p.zone==='kamakura'}).forEach(function(p){ if(kamaOk&&fits(KAMA_DAY,p)) put(KAMA_DAY,p); else left.push(p) });
+  // 东京的地点：每天先定一个中心（原来就排了的用它们的中心，空的天挑离别的中心最远的想去地点），再按远近分
+  var tdays=days.filter(function(d){return d!==KAMA_DAY&&capOf(d)>=60}), tc=cands.filter(function(p){return p.zone!=='kamakura'}), pos=tc.filter(hasPos), cen={};
+  tdays.forEach(function(d){cen[d]=centroid(lists[d])});
+  tdays.forEach(function(d){ if(cen[d]) return; var best=null, bd=-1;
+    pos.forEach(function(p){var m=1e9; tdays.forEach(function(k){ if(cen[k]) m=Math.min(m,dist(p,cen[k])) }); if(m>bd){bd=m; best=p}});
+    if(best) cen[d]={lat:best.lat,lng:best.lng} });
+  for(var it=0;it<4;it++){var grp={}; tdays.forEach(function(d){grp[d]=lists[d].slice()});
+    pos.forEach(function(p){var bk=null, bd=1e9; tdays.forEach(function(d){ if(cen[d]){var dd=dist(p,cen[d]); if(dd<bd){bd=dd; bk=d}} }); if(bk) grp[bk].push(p)});
+    tdays.forEach(function(d){var c=centroid(grp[d]); if(c) cen[d]=c})}
+  tc.forEach(function(p){
+    var order=tdays.slice().sort(function(a,b){ if(!hasPos(p)) return dayLoad(lists[a])-dayLoad(lists[b]); return (cen[a]?dist(p,cen[a]):1e3)-(cen[b]?dist(p,cen[b]):1e3) });
+    for(var i=0;i<order.length;i++) if(fits(order[i],p)){put(order[i],p); return}
+    left.push(p);
+  });
+  return {days:days,lists:lists,res:res,left:left,kamaGone:!kamaOk};
+}
+// 试 20 种分法，按「排进去的多、路上时间少」排好；先给最好的，「重新排」就换下一种
+var RUNS=[], runI=0;
+function autoRuns(){var seen={}, out=[];
+  for(var i=0;i<20;i++){var r=autoPlan(), sig=Object.keys(r.res).sort().map(function(id){return id+r.res[id]}).join();
+    if(seen[sig]) continue; seen[sig]=1; r.n=Object.keys(r.res).length; r.tr=r.days.reduce(function(t,d){return t+travelMin(routeOrder(r.lists[d]))},0); out.push(r)}
+  return out.sort(function(a,b){return b.n-a.n||a.tr-b.tr})}
+function nextRun(){ if(!RUNS.length) RUNS=autoRuns(); AP=RUNS[runI%RUNS.length]; runI++ }
+function openAuto(){RUNS=[]; runI=0; nextRun(); openId='auto'; autoSheet(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on')}
+function autoSheet(){
+  killMap(); var tok=mapTok, n=Object.keys(AP.res).length, nd={};
+  Object.keys(AP.res).forEach(function(id){nd[AP.res[id]]=1});
+  var sets=AP.days.map(function(d){return {d:d,a:routeOrder(AP.lists[d])}}).filter(function(x){return x.a.length});
+  var btns='<div class="row" style="margin:12px 0 0"><button class="btn coral" data-act="autook" style="flex:1.4">就这样排</button><button class="btn" data-act="autore">重新排</button></div>';
+  var h='<button class="close" data-act="close" aria-label="关闭">✕</button><h3 style="margin-top:0">'+(n?'帮你排好了':'没有可以排的')+'</h3>';
+  if(!AP.days.length) h+='<p>旅行的日子都过完了。</p>';
+  else if(!n) h+='<p class="muted">'+(AP.left.length?'剩下的日子都排满了（每天约 7 小时），塞不进新的地点。':'想去的地点都已经排好了。')+'</p>';
+  else h+='<p class="muted" style="margin:6px 0 0">把 '+n+' 个想去的地点分进了 '+Object.keys(nd).length+' 天：离得近的放同一天，每天大约 7 小时以内（含路上）'+(AP.days[0]===dayNo()?'，今天只算到晚上 9 点':'')+'。原来排好的没动。<b>还没生效</b>，看看再决定。</p>'+btns;
+  if(sets.length>1) h+='<div class="chips mapdays" style="margin:14px 0 0"><button class="chip on" data-act="mapfocus" data-v="0">全部</button>'+sets.map(function(x){return '<button class="chip" data-act="mapfocus" data-v="'+x.d+'"><i style="background:'+DAYC[x.d-1]+'"></i>'+(15+x.d)+' 日</button>'}).join('')+'</div>';
+  if(sets.length) h+='<div class="mapbox" id="mapBox"></div><p class="muted" id="mapNote" style="margin:0 0 6px">'+(AP.left.filter(hasPos).length?'白色小点是这次排不下的地点。':'')+'</p>';
+  h+='<div class="preview">'+sets.map(function(x){return '<h4 class="mine">'+dayLabel(x.d)+(x.d===KAMA_DAY?' · 镰仓日':'')+(x.d===dayNo()?' · 今天':'')+'</h4><div class="card dayc">'+sumLine(x.a)+numbered(x.a,x.d,AP.res)+'</div>'}).join('');
+  if(AP.left.length) h+='<h4 class="mine">这次排不下的</h4><div class="card dayc">'+AP.left.map(function(p){return prow(p)}).join('')+'<p class="muted" style="margin:6px 0 0">'+(AP.kamaGone&&AP.left.some(function(p){return p.zone==='kamakura'})?'镰仓日已经过了。':'')+'剩下的日子塞不下了。真想去的话，点开地点自己挑一天。</p></div>';
+  h+='</div>'+(n&&sets.length>1?btns:'');
+  $('#sheet').innerHTML=h;
+  if(sets.length) loadLeaflet().then(function(L){ setTimeout(function(){ if(tok===mapTok&&openId==='auto') drawMap(L,sets,AP.left.filter(hasPos),0,true) },380) },
+    function(){var m=$('#mapNote'); if(m&&tok===mapTok) m.textContent='地图要联网才能打开，下面的列表照样可以看。'});
+}
+function applyAuto(){var n=0; Object.keys(AP.res).forEach(function(id){ if(byId[id]&&!S.plan[id]){S.plan[id]=AP.res[id]; n++} }); save(); AP=null; closeSheet(); toast('排好了 '+n+' 个地点，随时可以再改')}
 
 /* ---------- 地点 ---------- */
 var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['mine','我加的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
@@ -994,6 +1071,13 @@ document.addEventListener('click',function(e){
   else if(a==='plan'){var d=+v, pp=byId[openId]; if(S.plan[openId]===d){delete S.plan[openId]; toast('从排程里拿掉了')} else {S.plan[openId]=d; toast(planMsg(pp,d))} save(); reopen()}
   else if(a==='map') openMap(+v);
   else if(a==='mapday'){mapDay=+v; mapSheet()}
+  else if(a==='auto') openAuto();
+  else if(a==='autore'){nextRun(); autoSheet(); $('#sheet').scrollTop=0; toast(RUNS.length>1?'换了一种排法（'+((runI-1)%RUNS.length+1)+' / '+RUNS.length+'）':'只有这一种排法')}
+  else if(a==='autook') applyAuto();
+  else if(a==='mapfocus'){ if(!MAP||!AP) return; var fd=+v, pts=[];
+    AP.days.forEach(function(k){ if(!fd||k===fd) AP.lists[k].filter(hasPos).forEach(function(p){pts.push([p.lat,p.lng])}) });
+    [].forEach.call(document.querySelectorAll('#sheet [data-act=mapfocus]'),function(b){b.classList.toggle('on',b===el)});
+    if(pts.length>1) MAP.fitBounds(pts,{padding:[34,34],maxZoom:16}); else if(pts.length) MAP.setView(pts[0],15) }
   else if(a==='recap') openRecap();
   else if(a==='rcfmt'){RC.fmt=v; reopen()}
   else if(a==='rcshuffle'){RC.seed++; paintRecap()}
