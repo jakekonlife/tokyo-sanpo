@@ -23,7 +23,8 @@ self.addEventListener('fetch', function (e) {
   var req = e.request; if (req.method !== 'GET') return;
   var u = new URL(req.url);
   if (u.origin === location.origin) {
-    e.respondWith(Promise.race([fetch(req), timeout(4000)]).then(function (res) {
+    // cache: 'no-cache'：每次都先问服务器有没有新版（没变就很快回 304），不用等 GitHub 的 10 分钟缓存过期
+    e.respondWith(Promise.race([fetch(req, { cache: 'no-cache' }), timeout(4000)]).then(function (res) {
       if (res.ok) { var copy = res.clone(); caches.open(SHELL).then(function (c) { c.put(req, copy); }); }
       return res;
     }).catch(function () {
