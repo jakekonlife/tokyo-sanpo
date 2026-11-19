@@ -250,6 +250,23 @@ input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radiu
 .prow small{opacity:.7;font-size:12px}
 .prow.done b{text-decoration:line-through;opacity:.6}
 .prow .tick{margin-left:auto;flex:none;font-family:var(--display);color:var(--coral);font-size:15px}
+.prow .num{flex:none;width:26px;height:26px;border-radius:50%;color:#fff;border:var(--line);display:grid;place-items:center;font:700 13px/1 var(--latin)}
+
+/* 手机上点按钮、点输入框时不要自动放大（双指缩放照常可以） */
+html{touch-action:manipulation}
+input.line,textarea{font-size:16px}
+
+/* 排程地图 */
+.mapbox{height:min(56vh,430px);border:var(--line);border-radius:14px;overflow:hidden;margin:10px 0 6px;background:var(--ice)}
+.mapdays .chip{box-shadow:2px 2px 0 var(--navy)}
+.mapdays .chip.on{background:var(--navy);color:#fff;transform:translate(2px,2px);box-shadow:none}
+.mapdays .chip i{display:inline-block;width:10px;height:10px;border-radius:50%;border:1.5px solid var(--navy);margin-right:4px;vertical-align:-1px}
+.pin{background:none;border:0}
+.pin b{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:2px solid #173A7A;color:#fff;font:700 14px/1 Fredoka,sans-serif;box-shadow:2px 2px 0 #173A7A}
+.leaflet-container{font-family:var(--body)}
+.leaflet-popup-content{color:var(--navy);margin:10px 12px;min-width:170px}
+.leaflet-popup-content b{font-family:var(--display);font-weight:400;font-size:17px}
+.leaflet-popup-content .row{margin-top:8px;gap:6px}
 
 /* 底部导航 */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--cream);border-top:var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));display:flex;justify-content:center}
@@ -652,17 +669,77 @@ function delPlace(id){
 var WK=['一','二','三','四','五','六','日'], listMode='list';
 function dayLabel(d){return '11/'+(15+d)+' 周'+WK[d-1]}
 function planned(d){return PLACES.filter(function(p){return S.plan[p.id]===d})}
-function prow(p){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':'')+'</button>'}
+function prow(p,n,col){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(n?'<span class="num" style="background:'+(sp?'#9aa5b8':col||'var(--coral)')+'">'+n+'</span>':'')+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':'')+'</button>'}
 function daySelector(id){return '<div class="days">'+WK.map(function(w,i){var d=i+1; return '<button data-act="plan" data-v="'+d+'" class="'+(S.plan[id]===d?'on':'')+(d===KAMA_DAY?' k':'')+'" aria-pressed="'+(S.plan[id]===d)+'" aria-label="'+dayLabel(d)+(d===KAMA_DAY?' 镰仓日':'')+'">'+(15+d)+'<small>周'+w+'</small></button>'}).join('')+'</div>'}
-function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=planned(d).filter(function(p){return !S.stamps[p.id]}); if(!a.length) return '';
-  return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。</p>'+a.map(prow).join('')+'</div>'}
+function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=routeOrder(planned(d).filter(function(p){return !S.stamps[p.id]})); if(!a.length) return '';
+  return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。'+(a.length>1?'已经按顺路排好。':'')+'</p>'+numbered(a,d)+dayFoot(d,a)+'</div>'}
+function numbered(a,d){var k=0, many=a.filter(hasPos).length>1; return a.map(function(p){return prow(p,many&&hasPos(p)?++k:0,DAYC[d-1])}).join('')}
 function renderPlan(){
-  var today=dayNo(), n=Object.keys(S.plan).length, h='<h2 class="sec">小排程</h2><p class="muted" style="margin:-4px 0 12px">'+(n?'只是大概的打算，随时可以改。点开地点可以换一天或者拿掉。':'还没排。点开任何一个地点，在「大概哪天去」里选一天，这里就会出现。')+'</p>';
-  for(var d=1;d<=TRIP_DAYS;d++){var a=planned(d), mins=a.reduce(function(t,p){return t+p.mins},0);
-    h+='<div class="card dayc'+(d===today?' today':'')+'"><h3>'+dayLabel(d)+(d===today?'<span class="chip hot">今天</span>':'')+(d===KAMA_DAY?'<span class="chip">镰仓日</span>':'')+(a.length?'<span class="muted" style="font-family:var(--body);margin-left:auto">'+a.length+' 个 · 约 '+(Math.round(mins/30)/2)+' 小时</span>':'')+'</h3>'+(a.length?a.map(prow).join(''):'<p class="muted" style="margin:2px 0 0">空着，随便走走</p>')+'</div>'}
+  var today=dayNo(), n=Object.keys(S.plan).length, h='<h2 class="sec">小排程</h2><p class="muted" style="margin:-4px 0 12px">'+(n?'只是大概的打算，随时可以改。点开地点可以换一天或者拿掉。每天会按顺路排好顺序。':'还没排。点开任何一个地点，在「大概哪天去」里选一天，这里就会出现。')+'</p>'+
+    (n?'<div class="row" style="margin:-2px 0 16px"><button class="btn mustard" data-act="map" data-v="0">'+ico('pin')+'整趟排程看地图</button></div>':'');
+  for(var d=1;d<=TRIP_DAYS;d++){var a=routeOrder(planned(d)), mins=a.reduce(function(t,p){return t+p.mins},0);
+    h+='<div class="card dayc'+(d===today?' today':'')+'"><h3>'+dayLabel(d)+(d===today?'<span class="chip hot">今天</span>':'')+(d===KAMA_DAY?'<span class="chip">镰仓日</span>':'')+(a.length?'<span class="muted" style="font-family:var(--body);margin-left:auto">'+a.length+' 个 · 约 '+(Math.round(mins/30)/2)+' 小时</span>':'')+'</h3>'+(a.length?numbered(a,d)+dayFoot(d,a):'<p class="muted" style="margin:2px 0 0">空着，随便走走</p>')+'</div>'}
   var loose=PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super') && !S.plan[p.id] && !S.stamps[p.id]});
-  if(loose.length) h+='<h2 class="sec">想去但还没排</h2><div class="card dayc">'+loose.map(prow).join('')+'</div>';
+  if(loose.length) h+='<h2 class="sec">想去但还没排</h2><div class="card dayc">'+loose.map(function(p){return prow(p)}).join('')+'</div>';
   $('#planPane').innerHTML=h;
+}
+function planMsg(pp,d){return pp.zone==='kamakura'&&d!==KAMA_DAY?'排好了。提醒：这是镰仓的地点，镰仓日是 19 号':pp.zone!=='kamakura'&&d===KAMA_DAY?'排好了。提醒：19 号是镰仓日，这个在东京':'排在 '+dayLabel(d)+' 了'}
+
+/* ---------- 排程地图 ---------- */
+var DAYC=['#E9574D','#2F6FD0','#2F7D5B','#C48A12','#8E44AD','#173A7A','#D35400'], MAP=null, mapDay=0, mapTok=0, LL=null;
+function hasPos(p){return p.lat!=null&&p.lng!=null}
+// 一天里的地点按顺路排：每个点都试一次当起点，一路走最近的下一个，取总路程最短的那条
+function routeOrder(a){var pos=a.filter(hasPos), rest=a.filter(function(p){return !hasPos(p)}); if(pos.length<3) return pos.concat(rest);
+  var best=pos, bl=1e9;
+  pos.forEach(function(s){var left=pos.filter(function(p){return p!==s}), path=[s], len=0, cur=s;
+    while(left.length){var k=0, kd=1e9; left.forEach(function(p,i){var dd=dist(cur,p); if(dd<kd){kd=dd; k=i}}); cur=left.splice(k,1)[0]; path.push(cur); len+=kd}
+    if(len<bl){bl=len; best=path}});
+  return best.concat(rest)}
+function gdir(a){a=a.filter(hasPos); if(!a.length) return ''; if(a.length===1) return route(a[0]); var e=encodeURIComponent;
+  return 'https://www.google.com/maps/dir/?api=1&origin='+e(a[0].jp)+'&destination='+e(a[a.length-1].jp)+(a.length>2?'&waypoints='+e(a.slice(1,-1).map(function(p){return p.jp}).join('|')):'')}
+function gbtn(a){var open=a.filter(function(p){return !S.stamps[p.id]}), use=open.filter(hasPos).length?open:a, u=gdir(use), n=use.filter(hasPos).length;
+  return u?'<a class="btn small primary" href="'+u+'" target="_blank" rel="noopener" style="flex:1">'+(n>1?'Google 路线':'怎么去')+'</a>':''}
+function dayFoot(d,a){ if(!a.filter(hasPos).length) return ''; return '<div class="row" style="margin-top:10px"><button class="btn small" data-act="map" data-v="'+d+'" style="flex:1">'+ico('pin')+'看地图</button>'+gbtn(a)+'</div>'}
+function loadLeaflet(){
+  if(window.L) return Promise.resolve(window.L); if(LL) return LL;
+  LL=new Promise(function(res,rej){var base='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/', l=document.createElement('link'), s=document.createElement('script');
+    l.rel='stylesheet'; l.href=base+'leaflet.min.css'; l.crossOrigin='anonymous'; document.head.appendChild(l);
+    s.src=base+'leaflet.min.js'; s.crossOrigin='anonymous'; s.onload=function(){res(window.L)}; s.onerror=function(){LL=null; s.remove(); rej(new Error('leaflet'))}; document.head.appendChild(s)});
+  return LL}
+function killMap(){mapTok++; if(MAP){try{MAP.remove()}catch(e){} MAP=null}}
+function openMap(d){mapDay=d; openId='map'; mapSheet(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on')}
+function looseOnMap(){return PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super')&&!S.plan[p.id]&&!S.stamps[p.id]&&hasPos(p)})}
+function mapSheet(){
+  killMap(); var d=mapDay, tok=mapTok;
+  var sets=(d?[d]:WK.map(function(w,i){return i+1})).map(function(k){return {d:k,a:routeOrder(planned(k))}}).filter(function(x){return x.a.length}), loose=looseOnMap();
+  var h='<button class="close" data-act="close" aria-label="关闭">✕</button><h3 style="margin-top:0">'+(d?dayLabel(d)+' 的地图':'整趟排程的地图')+'</h3>'+
+    '<div class="chips mapdays" style="margin:8px 0 0"><button class="chip'+(d?'':' on')+'" data-act="mapday" data-v="0">全部</button>'+
+    WK.map(function(w,i){var k=i+1, n=planned(k).length; return '<button class="chip'+(d===k?' on':'')+'" data-act="mapday" data-v="'+k+'"'+(n?'':' disabled style="opacity:.4"')+'><i style="background:'+DAYC[i]+'"></i>'+(15+k)+' 日</button>'}).join('')+'</div>'+
+    '<div class="mapbox" id="mapBox"></div><p class="muted" id="mapNote" style="margin:0 0 6px">'+(loose.length?'白色小点是想去但还没排的地点，点一下可以看看'+(d?'、排进这天':'')+'。':'')+'</p>';
+  sets.forEach(function(x){ h+=(d?'':'<h4 class="mine">'+dayLabel(x.d)+(x.d===KAMA_DAY?' · 镰仓日':'')+'</h4>')+'<div class="card dayc">'+numbered(x.a,x.d)+'<div class="row" style="margin-top:10px">'+gbtn(x.a)+'</div></div>' });
+  if(!sets.length) h+='<div class="card empty">这天还没排地点。<br><span class="muted">点地图上的白点，或者在地点详情里选「大概哪天去」。</span></div>';
+  $('#sheet').innerHTML=h;
+  loadLeaflet().then(function(L){ setTimeout(function(){ if(tok===mapTok&&openId==='map') drawMap(L,sets,loose,d) },380) },
+    function(){var n=$('#mapNote'); if(n&&tok===mapTok) n.textContent='地图要联网才能打开（打开过一次之后，看过的地方会存到手机）。可以先用下面的 Google 路线。'});
+}
+function popHTML(p,d,isLoose){return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+
+  '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(isLoose&&d?'<button class="btn small coral" data-act="mapadd" data-id="'+p.id+'" data-v="'+d+'" style="flex:1">排进这天</button>':'')+'</div>'}
+function drawMap(L,sets,loose,d){
+  var box=$('#mapBox'); if(!box) return;
+  MAP=L.map(box,{zoomControl:true});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(MAP);
+  var pts=[];
+  loose.forEach(function(p){L.circleMarker([p.lat,p.lng],{radius:7,color:'#173A7A',weight:2,fillColor:'#fff',fillOpacity:1}).addTo(MAP).bindPopup(popHTML(p,d,true)); if(!sets.length) pts.push([p.lat,p.lng])});
+  sets.forEach(function(x){var col=DAYC[x.d-1], line=[], k=0, many=x.a.filter(hasPos).length>1;
+    x.a.filter(hasPos).forEach(function(p){var ll=[p.lat,p.lng]; line.push(ll); pts.push(ll); k++;
+      L.marker(ll,{icon:L.divIcon({className:'pin',html:'<b style="background:'+(S.stamps[p.id]?'#9aa5b8':col)+'">'+(many?k:'')+'</b>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-14]}),zIndexOffset:1000}).addTo(MAP).bindPopup(popHTML(p,x.d,false))});
+    if(line.length>1) L.polyline(line,{color:col,weight:3,dashArray:'6 7',opacity:.85}).addTo(MAP)});
+  if(pts.length>1) MAP.fitBounds(pts,{padding:[34,34],maxZoom:16}); else if(pts.length) MAP.setView(pts[0],15); else MAP.setView(d===KAMA_DAY?[35.32,139.55]:[35.68,139.76],d===KAMA_DAY?13:11);
+  // Leaflet 的弹窗会拦住点击冒泡，所以按钮在这里单独接
+  MAP.on('popupopen',function(e){[].forEach.call(e.popup.getElement().querySelectorAll('[data-act]'),function(b){b.addEventListener('click',function(ev){ev.stopPropagation();
+    if(b.dataset.act==='open') openDetail(b.dataset.id);
+    else if(b.dataset.act==='mapadd'){var pp=byId[b.dataset.id], dd=+b.dataset.v; S.plan[pp.id]=dd; save(); toast(planMsg(pp,dd)); mapSheet()}
+  })})});
 }
 
 /* ---------- 地点 ---------- */
@@ -862,6 +939,7 @@ function shareRecap(){
 /* ---------- 详情 ---------- */
 var openId=null;
 function openDetail(id){
+  killMap();
   var p=byId[id], st=S.st[id], sp=S.stamps[id], ps=pics(p); openId=id;
   var l=loc(), d=l&&p.lat!=null?dist(l,p):null;
   $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button>'+(ps.length>1?'<div class="gal" id="gal">'+ps.map(function(o,i){return ph(p,960,i===0?'<span class="area">'+p.area+'</span>':'',i)}).join('')+'</div><div class="dots" id="galDots">'+ps.map(function(o,i){return '<i class="'+(i===0?'on':'')+'"></i>'}).join('')+'</div>':ph(p,960,'<span class="area">'+p.area+'</span>'))+
@@ -882,7 +960,7 @@ function openDetail(id){
   if(sp){var n=$('#note'); n.value=sp.note||''; n.addEventListener('input',function(){S.stamps[id].note=n.value; save()})}
   $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
 }
-function closeSheet(){document.body.classList.remove('sheet-on'); openId=null; refresh()}
+function closeSheet(){killMap(); document.body.classList.remove('sheet-on'); openId=null; refresh()}
 
 /* ---------- 导航与事件 ---------- */
 var tab='home';
@@ -913,7 +991,9 @@ document.addEventListener('click',function(e){
   else if(a==='cpmins'){CP.mins=+v; formSync()}
   else if(a==='cpsave') saveForm();
   else if(a==='lmode'){listMode=v; renderList(); window.scrollTo(0,0)}
-  else if(a==='plan'){var d=+v, pp=byId[openId]; if(S.plan[openId]===d){delete S.plan[openId]; toast('从排程里拿掉了')} else {S.plan[openId]=d; toast(pp.zone==='kamakura'&&d!==KAMA_DAY?'排好了。提醒：这是镰仓的地点，镰仓日是 19 号':pp.zone!=='kamakura'&&d===KAMA_DAY?'排好了。提醒：19 号是镰仓日，这个在东京':'排在 '+dayLabel(d)+' 了')} save(); reopen()}
+  else if(a==='plan'){var d=+v, pp=byId[openId]; if(S.plan[openId]===d){delete S.plan[openId]; toast('从排程里拿掉了')} else {S.plan[openId]=d; toast(planMsg(pp,d))} save(); reopen()}
+  else if(a==='map') openMap(+v);
+  else if(a==='mapday'){mapDay=+v; mapSheet()}
   else if(a==='recap') openRecap();
   else if(a==='rcfmt'){RC.fmt=v; reopen()}
   else if(a==='rcshuffle'){RC.seed++; paintRecap()}

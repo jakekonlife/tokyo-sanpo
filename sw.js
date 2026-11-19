@@ -1,5 +1,5 @@
 // 离线缓存：页面本身优先走网络（这样更新能及时生效），没网时用缓存；照片和字体优先用缓存。
-var SHELL = 'sanpo-shell-v2', PHOTOS = 'sanpo-photos', FONTS = 'sanpo-fonts';
+var SHELL = 'sanpo-shell-v2', PHOTOS = 'sanpo-photos', FONTS = 'sanpo-fonts', LIB = 'sanpo-lib', TILES = 'sanpo-tiles';
 var FILES = ['./', 'index.html', 'places.js', 'photos.js', 'reviews.js', 'manifest.webmanifest', 'icon-180.png', 'icon-512.png'];
 
 self.addEventListener('install', function (e) {
@@ -7,7 +7,7 @@ self.addEventListener('install', function (e) {
 });
 self.addEventListener('activate', function (e) {
   e.waitUntil(caches.keys().then(function (keys) {
-    return Promise.all(keys.filter(function (k) { return k.indexOf('sanpo-') === 0 && [SHELL, PHOTOS, FONTS].indexOf(k) < 0; }).map(function (k) { return caches.delete(k); }));
+    return Promise.all(keys.filter(function (k) { return k.indexOf('sanpo-') === 0 && [SHELL, PHOTOS, FONTS, LIB, TILES].indexOf(k) < 0; }).map(function (k) { return caches.delete(k); }));
   }).then(function () { return self.clients.claim(); }));
 });
 
@@ -33,5 +33,9 @@ self.addEventListener('fetch', function (e) {
     e.respondWith(cacheFirst(PHOTOS, req));
   } else if (u.hostname === 'fonts.googleapis.com' || u.hostname === 'fonts.gstatic.com') {
     e.respondWith(cacheFirst(FONTS, req));
+  } else if (u.hostname === 'cdnjs.cloudflare.com') {
+    e.respondWith(cacheFirst(LIB, req));      // 地图用的 Leaflet
+  } else if (u.hostname === 'tile.openstreetmap.org') {
+    e.respondWith(cacheFirst(TILES, req));    // 看过的地图格子存起来，没信号也能再看
   }
 });
