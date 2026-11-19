@@ -268,6 +268,15 @@ input.line,textarea{font-size:16px}
 .pin{background:none;border:0}
 .pin b{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:2px solid #173A7A;color:#fff;font:700 14px/1 Fredoka,sans-serif;box-shadow:2px 2px 0 #173A7A}
 .leaflet-container{font-family:var(--body)}
+.mapbox.big{height:min(62vh,540px);margin-top:12px}
+.xpin{background:none;border:0}
+.xpin b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;border:2px solid #173A7A;background:#FFFCF3;color:#173A7A;font:700 14px/1 sans-serif;box-shadow:2px 2px 0 #173A7A}
+.xpin.s b{background:#E9B93E}
+.xpin.w b{background:#fff;color:#2F6FD0}
+.xpin.v b{background:#9aa5b8;color:#fff;font-size:12px}
+.xpin.n b{box-shadow:1px 1px 0 #173A7A}
+.xme{display:block;width:18px;height:18px;border-radius:50%;background:#2F6FD0;border:3px solid #fff;box-shadow:0 0 0 2px #2F6FD0,0 0 0 9px rgba(47,111,208,.18)}
+.xpimg{display:block;width:100%;height:110px;object-fit:cover;border:2px solid #173A7A;border-radius:10px;margin-bottom:6px}
 .leaflet-popup-content{color:var(--navy);margin:10px 12px;min-width:170px}
 .leaflet-popup-content b{font-family:var(--display);font-weight:400;font-size:17px}
 .leaflet-popup-content .row{margin-top:8px;gap:6px}
@@ -384,8 +393,9 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
 
   <!-- 地点 -->
   <section class="view" id="v-list">
-    <div class="seg" style="margin:0 0 4px"><button data-act="lmode" data-v="list" class="on">想去池</button><button data-act="lmode" data-v="plan">小排程</button></div>
+    <div class="seg" style="margin:0 0 4px"><button data-act="lmode" data-v="list" class="on">想去池</button><button data-act="lmode" data-v="plan">小排程</button><button data-act="lmode" data-v="map">地图</button></div>
     <div id="planPane" hidden></div>
+    <div id="mapPane" hidden></div>
     <div id="listPane">
     <h2 class="sec">想去池</h2>
     <input class="line" id="q" type="search" placeholder="搜地点、街区，比如 咖啡、镰仓、谷中" aria-label="搜索地点" autocomplete="off" style="margin-bottom:10px">
@@ -821,16 +831,62 @@ function applyAuto(){var n=0; Object.keys(AP.res).forEach(function(id){ if(byId[
 
 /* ---------- 地点 ---------- */
 var FILTERS=[['all','全部'],['tokyo','东京'],['kamakura','镰仓'],['liked','♥ 想去的'],['mine','我加的'],['skip','划掉的']].concat(Object.keys(TAGS).map(function(k){return [k,ico(k)+TAGS[k][1]]}));
+function filterChips(){return FILTERS.map(function(f){return '<button class="chip fchip'+(filter===f[0]?' on':'')+'" data-act="filter" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('')}
+function matchP(p,words){var st=S.st[p.id];
+  if(words.length){var hay=(p.zh+' '+p.jp+' '+p.area+' '+p.blurb+' '+p.tip+' '+(p.zone==='kamakura'?'镰仓 鎌倉 kamakura':'东京 東京 tokyo')+' '+p.tags.map(function(t){return TAGS[t]?TAGS[t][1]:''}).join(' ')).toLowerCase(); if(!words.every(function(w){return hay.indexOf(w)>=0})) return false}
+  if(filter==='all') return true; if(filter==='tokyo'||filter==='kamakura') return p.zone===filter;
+  if(filter==='mine') return !!p.custom; if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0}
+
+/* ---------- 大地图：所有地点、你在哪、地图中间附近有什么 ---------- */
+var XMAP=null, XL=null, XME=null, xFit=true, xNearT=0;
+function xKind(p){return S.stamps[p.id]?'v':S.st[p.id]==='super'?'s':S.st[p.id]==='want'?'w':'n'}
+function xIcon(L,p){var k=xKind(p), sz=k==='n'?20:28; return L.divIcon({className:'xpin '+k,html:'<b>'+{s:'★',w:'♥',v:'印',n:''}[k]+'</b>',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2]})}
+function xVisible(){return PLACES.filter(function(p){return hasPos(p)&&matchP(p,[])&&(filter==='skip'||S.st[p.id]!=='skip')})}
+function xPop(p){var l=loc(), u=photo(p,500), d=dayNo(), canToday=d>=1&&d<=TRIP_DAYS&&S.plan[p.id]!==d&&!S.stamps[p.id];
+  return (u?'<img class="xpimg" src="'+u+'" alt="" crossorigin="anonymous" onerror="this.remove()">':'')+'<b>'+p.zh+'</b><br><span class="muted">'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':S.plan[p.id]?' · 排在 '+dayLabel(S.plan[p.id]):'')+'</span>'+
+    '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(canToday?'<button class="btn small coral" data-act="xtoday" data-id="'+p.id+'" style="flex:1">排进今天</button>':'')+'</div>'}
+function renderExplore(){
+  var pane=$('#mapPane');
+  if(!pane.firstChild) pane.innerHTML='<h2 class="sec">地图</h2><div class="scroller" id="xfilters"></div>'+
+    '<div class="row" style="margin:6px 0 0;align-items:center"><button class="btn small" data-act="locate" id="xLoc"></button><span class="muted" style="font-size:12px;line-height:1.4">★ 特别想去　♥ 想去<br>小圆点 还没决定　灰色 去过了</span></div>'+
+    '<div class="mapbox big" id="xMap"></div><p class="muted" id="xNote" style="margin:0 0 4px">点图钉看看是什么地方；拖动地图，下面会列出地图中间附近的地点。</p><h4 class="mine">地图中间附近</h4><div class="card dayc" id="xNear"></div>';
+  $('#xfilters').innerHTML=filterChips();
+  $('#xLoc').innerHTML=ico('pin')+(loc()?'回到我这里':'用我的位置');
+  loadLeaflet().then(function(L){ if(tab==='list'&&listMode==='map') xDraw(L) },
+    function(){$('#xNote').textContent='地图要联网才能打开第一次（之后看过的地方会存到手机）。'});
+}
+function xDraw(L){
+  if(!XMAP){
+    XMAP=L.map($('#xMap'),{zoomControl:true}); L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(XMAP);
+    XL=L.layerGroup().addTo(XMAP); xFit=true;
+    XMAP.on('moveend',function(){clearTimeout(xNearT); xNearT=setTimeout(xNear,150)});
+    // Leaflet 的弹窗会拦住点击冒泡，所以按钮在这里单独接
+    XMAP.on('popupopen',function(e){[].forEach.call(e.popup.getElement().querySelectorAll('[data-act]'),function(b){b.addEventListener('click',function(ev){ev.stopPropagation();
+      if(b.dataset.act==='open') openDetail(b.dataset.id);
+      else if(b.dataset.act==='xtoday'){var p=byId[b.dataset.id], d=dayNo(); S.plan[p.id]=d; save(); toast(planMsg(p,d)); XMAP.closePopup(); xDraw(L)}
+    })})});
+  } else XMAP.invalidateSize();
+  XL.clearLayers(); var vis=xVisible(), l=loc();
+  vis.forEach(function(p){L.marker([p.lat,p.lng],{icon:xIcon(L,p),zIndexOffset:{s:300,w:200,v:100,n:0}[xKind(p)]}).bindPopup(xPop(p),{maxWidth:250,minWidth:200}).addTo(XL)});
+  if(XME){XME.remove(); XME=null}
+  if(l) XME=L.marker([l.lat,l.lng],{icon:L.divIcon({className:'',html:'<i class="xme"></i>',iconSize:[18,18],iconAnchor:[9,9]}),interactive:false,zIndexOffset:-1000}).addTo(XMAP);
+  if(xFit){xFit=false; var z=filter==='kamakura'||filter==='tokyo'?filter:null;
+    if(l&&!z&&dist(l,{lat:35.5,lng:139.65})<80) XMAP.setView([l.lat,l.lng],14);
+    else {var zz=z||zone(), pts=vis.filter(function(p){return p.zone===zz}).map(function(p){return [p.lat,p.lng]}); if(!pts.length) pts=vis.map(function(p){return [p.lat,p.lng]});
+      if(pts.length>1) XMAP.fitBounds(pts,{padding:[30,30],maxZoom:15}); else if(pts.length) XMAP.setView(pts[0],15); else XMAP.setView([35.68,139.76],11)}}
+  xNear();
+}
+function xNear(){var el=$('#xNear'); if(!el||!XMAP) return; var c=XMAP.getCenter(), l=loc();
+  var near=xVisible().map(function(p){return {p:p,d:dist({lat:c.lat,lng:c.lng},p)}}).sort(function(a,b){return a.d-b.d}).slice(0,6);
+  el.innerHTML=near.length?near.map(function(x){var k=l?dist(l,x.p):null; return prow(x.p,0,null,k==null?'':k<1?Math.round(k*100)*10+' m':(k<10?k.toFixed(1):Math.round(k))+' km')}).join(''):'<p class="muted" style="margin:0">这个筛选下没有地点。</p>'}
 function renderList(){
-  $('#planPane').hidden=listMode!=='plan'; $('#listPane').hidden=listMode==='plan';
+  $('#planPane').hidden=listMode!=='plan'; $('#mapPane').hidden=listMode!=='map'; $('#listPane').hidden=listMode!=='list';
   [].forEach.call(document.querySelectorAll('[data-act=lmode]'),function(b){b.classList.toggle('on',b.dataset.v===listMode)});
   if(listMode==='plan') return renderPlan();
-  $('#filters').innerHTML=FILTERS.map(function(f){return '<button class="chip fchip'+(filter===f[0]?' on':'')+'" data-act="filter" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('');
-  var q=($('#q').value||'').trim().toLowerCase(), words=q?q.split(/s+/):[];
-  var list=PLACES.filter(function(p){var st=S.st[p.id];
-    if(words.length){var hay=(p.zh+' '+p.jp+' '+p.area+' '+p.blurb+' '+p.tip+' '+(p.zone==='kamakura'?'镰仓 鎌倉 kamakura':'东京 東京 tokyo')+' '+p.tags.map(function(t){return TAGS[t][1]}).join(' ')).toLowerCase(); if(!words.every(function(w){return hay.indexOf(w)>=0})) return false}
-    if(filter==='all') return true; if(filter==='tokyo'||filter==='kamakura') return p.zone===filter;
-    if(filter==='mine') return !!p.custom; if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0});
+  if(listMode==='map') return renderExplore();
+  $('#filters').innerHTML=filterChips();
+  var q=($('#q').value||'').trim().toLowerCase(), words=q?q.split(/\s+/):[];
+  var list=PLACES.filter(function(p){return matchP(p,words)});
   $('#grid').innerHTML=list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
     return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500)+'<b>'+p.zh+'</b><small>'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></button>'}).join('')
     :'<div class="card empty" style="grid-column:1/-1">'+(q?'没找到「'+q.replace(/[<>&]/g,'')+'」<br><span class="muted">换个词，或者把上面的筛选切回「全部」。</span><div class="row" style="margin-top:12px"><button class="btn mustard" data-act="addp" data-v="'+q.replace(/[<>&"']/g,'')+'">把它加成自己的地点</button></div>':'这里还是空的')+'</div>';
@@ -1058,7 +1114,7 @@ document.addEventListener('click',function(e){
   else if(a==='gacha') gacha();
   else if(a==='sw') flyTop(v);
   else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
-  else if(a==='filter'){filter=v; renderList()}
+  else if(a==='filter'){filter=v; if(v==='tokyo'||v==='kamakura') xFit=true; renderList()}
   else if(a==='offline') saveOffline();
   else if(a==='addp') openForm(null,v);
   else if(a==='editp') openForm(openId);
@@ -1096,7 +1152,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&openId) clo
 function locate(){
   if(!navigator.geolocation){toast('这台设备拿不到定位');return}
   toast('正在找你在哪…');
-  navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); heroIdx=0; renderHome(); toast(zone()==='kamakura'?'你在镰仓一带':'定位好了，按远近重新排过')},
+  navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); heroIdx=0; renderHome(); if(tab==='list'&&listMode==='map'){xFit=true; renderExplore()} toast(zone()==='kamakura'?'你在镰仓一带':'定位好了，按远近重新排过')},
     function(){toast('没拿到定位，先按时间和心情推荐')},{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
 }
 function weather(){
