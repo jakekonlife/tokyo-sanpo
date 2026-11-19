@@ -212,6 +212,16 @@ h4.mine{font-family:var(--display);font-weight:400;font-size:18px;margin:18px 0 
 .shot.add input{position:absolute;width:1px;height:1px;opacity:0}
 .shot.pick{opacity:.45}
 .shot.pick.on{opacity:1;box-shadow:0 0 0 3px var(--coral)}
+.shot.pick .adj{position:absolute;right:4px;bottom:4px;background:var(--white);color:var(--navy);border:var(--line);border-radius:999px;font-size:12px;font-weight:700;line-height:20px;padding:0 8px;box-shadow:1px 1px 0 var(--navy)}
+.shot.pick.adj-on{box-shadow:0 0 0 3px var(--blue)}
+.shot.pick.adj-on .adj{background:var(--blue);color:#fff}
+.rcadj{background:var(--white);margin:12px 0 4px}
+.rcfocus{position:relative;width:fit-content;max-width:100%;margin:0 auto;border:var(--line);border-radius:12px;overflow:hidden;cursor:crosshair;touch-action:manipulation}
+.rcfocus img{display:block;max-width:100%;max-height:46vh;width:auto;height:auto}
+.rcfocus i{position:absolute;width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 2px var(--coral),inset 0 0 0 2px var(--coral);pointer-events:none;transition:left .15s,top .15s}
+.rczoom{display:flex;align-items:center;gap:10px;margin:10px 0;font-weight:700;font-size:14px}
+.rczoom input{flex:1;accent-color:var(--coral)}
+.rczoom b{min-width:40px;text-align:right;font-family:var(--latin)}
 .shot.pick i{position:absolute;left:4px;top:4px;min-width:24px;height:24px;border-radius:50%;background:var(--coral);color:#fff;font-style:normal;font-weight:700;font-size:13px;display:grid;place-items:center;border:var(--line)}
 .slot.got.pic{padding:0;overflow:hidden}
 .slot.got.pic>img{width:100%;height:100%;object-fit:cover;display:block}
@@ -1038,7 +1048,23 @@ function fullImg(id){return db().then(function(d){return new Promise(function(re
 function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId&&byId[openId]) openDetail(openId); sh.scrollTop=y}
 
 /* ---------- 旅行结算图 ---------- */
-var RC={fmt:'post',ids:null,line:null,seed:7,blob:null,url:null}, rcTok=0;
+var RC={fmt:'post',ids:null,line:null,seed:7,blob:null,url:null,adj:null}, rcTok=0;
+// 每张照片在结算图里的裁切：x、y 是想放在相框中间的那一点（0–1），z 是放大倍数。存在 S.crop 里，下次还在
+function cropOf(id){return (S.crop&&S.crop[id])||null}
+function setCrop(id,o){S.crop=S.crop||{}; S.crop[id]=Object.assign({x:.5,y:.45,z:1},S.crop[id]||{},o); save()}
+function adjHTML(){
+  var k=RC.ids.indexOf(RC.adj), x=k>=0?SHOTS.filter(function(s){return s.id===RC.adj})[0]:null; if(!x){RC.adj=null; return ''}
+  var c=cropOf(x.id)||{x:.5,y:.45,z:1};
+  return '<div class="card rcadj"><b style="font-family:var(--display);font-weight:400;font-size:18px">调整第 '+(k+1)+' 张</b><p class="muted" style="margin:2px 0 8px">点照片里最重要的地方（比如人脸），图上会尽量把它放在相框中间。</p>'+
+    '<div class="rcfocus" id="rcFocus"><img src="'+x.thumb+'" alt="要调整的照片"><i id="rcDot" style="left:'+(c.x*100)+'%;top:'+(c.y*100)+'%"></i></div>'+
+    '<label class="rczoom"><span>放大</span><input type="range" id="rcZoom" min="1" max="2.5" step="0.05" value="'+c.z+'" aria-label="放大"><b id="rcZv">'+c.z.toFixed(1)+'×</b></label>'+
+    '<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn small" data-act="rcmove" data-v="-1"'+(k===0?' disabled':'')+'>往前</button><button class="btn small" data-act="rcmove" data-v="1"'+(k===RC.ids.length-1?' disabled':'')+'>往后</button><button class="btn small" data-act="rcreset">恢复原样</button><button class="btn small primary" data-act="rcdone" style="flex:1">好了</button></div></div>'}
+function bindAdj(){
+  var f=$('#rcFocus'), z=$('#rcZoom'); if(!f) return; var id=RC.adj;
+  f.addEventListener('click',function(e){var r=f.getBoundingClientRect(), px=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)), py=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));
+    setCrop(id,{x:px,y:py}); var d=$('#rcDot'); d.style.left=(px*100)+'%'; d.style.top=(py*100)+'%'; clearTimeout(bindAdj.t); bindAdj.t=setTimeout(paintRecap,250)});
+  z.addEventListener('input',function(){var v=+z.value; setCrop(id,{z:v}); $('#rcZv').textContent=v.toFixed(1)+'×'; clearTimeout(bindAdj.t); bindAdj.t=setTimeout(paintRecap,250)});
+}
 function gotPlaces(){return PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t})}
 function defaultPicks(){var seen={}, a=[], rest=[]; SHOTS.slice().sort(function(x,y){return x.t-y.t}).forEach(function(x){ if(!seen[x.pid]||x.pid==='_free'){seen[x.pid]=1; a.push(x.id)} else rest.push(x.id)}); return a.concat(rest).slice(0,6)}
 function openRecap(){
@@ -1050,14 +1076,14 @@ function recapSheet(){
   var all=SHOTS.slice().sort(function(a,b){return a.t-b.t});
   $('#sheet').innerHTML='<button class="close" data-act="close" aria-label="关闭">✕</button>'+
     '<div class="recap-prev"><img id="recapImg" alt="旅行结算图"'+(RC.url?' src="'+RC.url+'"':' hidden')+'><span class="muted" id="recapMsg">正在画…</span></div>'+
-    '<p class="muted" style="margin:6px 0 0;text-align:center">长按图片也可以直接存到相册。</p>'+
+    '<p class="muted" style="margin:6px 0 0;text-align:center">长按图片也可以直接存到相册。</p>'+adjHTML()+
     '<div class="seg"><button data-act="rcfmt" data-v="post" class="'+(RC.fmt==='post'?'on':'')+'">帖子 4:5</button><button data-act="rcfmt" data-v="story" class="'+(RC.fmt==='story'?'on':'')+'">限时动态 9:16</button></div>'+
     '<div class="row"><button class="btn" data-act="rcshuffle">换个排法</button><button class="btn primary" data-act="rcshare" style="flex:1.4">保存 / 分享</button></div>'+
     '<h4 class="mine">图上的一句话</h4><input class="line" id="rcLine" maxlength="18" placeholder="留空就不放" aria-label="图上的一句话">'+
-    '<h4 class="mine">放哪些照片（点一下选，最多 6 张）</h4><div class="shots">'+all.map(function(x){var k=RC.ids.indexOf(x.id); return '<button class="shot pick'+(k>=0?' on':'')+'" data-act="rcpick" data-id="'+x.id+'" aria-pressed="'+(k>=0)+'"><img src="'+x.thumb+'" alt="我拍的照片">'+(k>=0?'<i>'+(k+1)+'</i>':'')+'</button>'}).join('')+addTile('_free')+'</div>'+
+    '<h4 class="mine">放哪些照片（点一下选，最多 6 张）</h4>'+(RC.ids.length?'<p class="muted" style="margin:-4px 0 8px">选上的照片按右下角「调」，可以挪位置、放大、换顺序。</p>':'')+'<div class="shots">'+all.map(function(x){var k=RC.ids.indexOf(x.id); return '<button class="shot pick'+(k>=0?' on':'')+(RC.adj===x.id?' adj-on':'')+'" data-act="rcpick" data-id="'+x.id+'" aria-pressed="'+(k>=0)+'"><img src="'+x.thumb+'" alt="我拍的照片">'+(k>=0?'<i>'+(k+1)+'</i><span class="adj" data-act="rcadj" data-id="'+x.id+'" role="button" aria-label="调整这张照片">调</span>':'')+'</button>'}).join('')+addTile('_free')+'</div>'+
     '<p class="muted" style="margin:8px 0 0">'+(all.length?'这里加的照片不属于某个地点，只用在结算图里。':'还没有照片：在这里加，或者去每个地点的详情里加。没有照片时会用你盖的章来排版。')+'</p>';
   var li=$('#rcLine'); li.value=RC.line; li.addEventListener('input',function(){RC.line=li.value; clearTimeout(recapSheet.t); recapSheet.t=setTimeout(paintRecap,450)});
-  paintRecap();
+  bindAdj(); paintRecap();
 }
 function rng(a){return function(){a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296}}
 function paintRecap(){
@@ -1065,7 +1091,7 @@ function paintRecap(){
   var msg=$('#recapMsg'); if(msg) msg.textContent='正在画…';
   var txt='东京散步签个章张照片件小事街区还没有先去走天夜「」'+RC.line+got.map(shortName).join('')+chosen.map(function(x){return byId[x.pid]?shortName(byId[x.pid]):''}).join('');
   var fonts=document.fonts&&document.fonts.load?Promise.all([document.fonts.load('400 40px "ZCOOL KuaiLe"',txt),document.fonts.load('700 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 24px "Noto Sans SC"',txt)]).catch(function(){}):Promise.resolve();
-  Promise.all([Promise.all(chosen.map(function(x){return fullImg(x.id).then(function(im){return {im:im,pid:x.pid}},function(){return null})})),fonts]).then(function(r){
+  Promise.all([Promise.all(chosen.map(function(x){return fullImg(x.id).then(function(im){return {im:im,pid:x.pid,id:x.id}},function(){return null})})),fonts]).then(function(r){
     var items=r[0].filter(Boolean); if(tok!==rcTok){items.forEach(function(o){URL.revokeObjectURL(o.im._u)}); return}
     var c=drawRecap(RC.fmt,items,got,RC.line.trim(),RC.seed); items.forEach(function(o){URL.revokeObjectURL(o.im._u)});
     c.toBlob(function(b){ if(tok!==rcTok||!b) return; RC.blob=b; if(RC.url) URL.revokeObjectURL(RC.url); RC.url=URL.createObjectURL(b);
@@ -1092,7 +1118,10 @@ function drawRecap(fmt,items,got,line,seed){
     x.save(); x.translate(cx+cw/2,cy+ch/2); x.rotate(ang);
     x.fillStyle=NAVY; x.fillRect(-w/2+9,-h/2+9,w,h); x.fillStyle='#fff'; x.fillRect(-w/2,-h/2,w,h); x.strokeStyle=NAVY; x.lineWidth=4; x.strokeRect(-w/2,-h/2,w,h);
     var iw=w-pad*2, ih=h-pad-capH, ix=-w/2+pad, iy=-h/2+pad, sc=Math.max(iw/im.naturalWidth,ih/im.naturalHeight), sw=iw/sc, sh=ih/sc;
-    x.drawImage(im,(im.naturalWidth-sw)/2,(im.naturalHeight-sh)*.45,sw,sh,ix,iy,iw,ih); x.lineWidth=3; x.strokeRect(ix,iy,iw,ih);
+    var nw=im.naturalWidth, nh=im.naturalHeight, cr=cropOf(o.id), sx=(nw-sw)/2, sy=(nh-sh)*.45;
+    // 调过的照片：按放大倍数裁小一点，再让选的那一点尽量落在相框中间（不会裁到照片外面）
+    if(cr){var z=Math.max(1,Math.min(2.5,cr.z||1)); sw/=z; sh/=z; sx=Math.max(0,Math.min(nw-sw,cr.x*nw-sw/2)); sy=Math.max(0,Math.min(nh-sh,cr.y*nh-sh/2))}
+    x.drawImage(im,sx,sy,sw,sh,ix,iy,iw,ih); x.lineWidth=3; x.strokeRect(ix,iy,iw,ih);
     if(cap){x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; var fz=Math.round(capH*.52); x.font='400 '+fz+'px '+DISP; while(x.measureText(cap).width>iw&&fz>16){fz-=2; x.font='400 '+fz+'px '+DISP} x.fillText(cap,0,h/2-capH/2+1); x.textBaseline='alphabetic'}
     x.restore();
   }
@@ -1212,7 +1241,11 @@ document.addEventListener('click',function(e){
   else if(a==='rcfmt'){RC.fmt=v; reopen()}
   else if(a==='rcshuffle'){RC.seed++; paintRecap()}
   else if(a==='rcshare') shareRecap();
-  else if(a==='rcpick'){var sid=+el.dataset.id, k=RC.ids.indexOf(sid); if(k>=0) RC.ids.splice(k,1); else if(RC.ids.length>=6){toast('最多放 6 张');return} else RC.ids.push(sid); reopen()}
+  else if(a==='rcpick'){var sid=+el.dataset.id, k=RC.ids.indexOf(sid); if(k>=0){RC.ids.splice(k,1); if(RC.adj===sid) RC.adj=null} else if(RC.ids.length>=6){toast('最多放 6 张');return} else RC.ids.push(sid); reopen()}
+  else if(a==='rcadj'){RC.adj=+el.dataset.id; reopen(); $('#sheet').scrollTop=0}
+  else if(a==='rcdone'){RC.adj=null; reopen()}
+  else if(a==='rcreset'){ if(S.crop) delete S.crop[RC.adj]; save(); reopen()}
+  else if(a==='rcmove'){var i0=RC.ids.indexOf(RC.adj), i1=i0+(+v); if(i0<0||i1<0||i1>=RC.ids.length) return; RC.ids[i0]=RC.ids[i1]; RC.ids[i1]=RC.adj; reopen()}
   else if(a==='delshot'){ if(confirm('删掉这张照片？')) delShot(+el.dataset.id).then(reopen,function(){toast('没删掉，再试一次')}) }
   else if(a==='st'){ if(S.st[openId]===v) delete S.st[openId]; else S.st[openId]=v; save(); openDetail(openId)}
   else if(a==='stamp'){var t=tk(); S.stamps[openId]={d:(t.getMonth()+1)+'/'+t.getDate(),t:Date.now(),note:''}; save(); justStamped=openId; var id2=openId; openDetail(id2); var s=$('#sheet .stamp'); if(s) s.classList.add('thud'); toast('盖好了！')}
