@@ -291,6 +291,10 @@ input.line,textarea{font-size:16px}
 .leaflet-container{font-family:var(--body)}
 .locbtn a{display:grid!important;place-items:center;color:#173A7A}
 .locbtn .ic{width:18px;height:18px;margin:0;vertical-align:0}
+.rangerow{margin:2px 0 4px;align-items:center;gap:6px}
+.rangerow:empty{display:none}
+.rangerow .rlab{font-size:12px;font-weight:700;opacity:.8;margin-right:2px}
+.rangerow .chip{padding:1px 10px;font-size:12px}
 .mapbox.big{height:min(62vh,540px);margin-top:12px}
 .xpin{background:none;border:0}
 .xpin b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;border:2px solid #173A7A;background:#FFFCF3;color:#173A7A;font:700 14px/1 sans-serif;box-shadow:2px 2px 0 #173A7A}
@@ -365,6 +369,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
       </svg>
     </div></div>
     <div class="chips" id="status"></div>
+    <div class="chips rangerow" id="range"></div>
     <div id="zoneBanner"></div>
     <h2 class="sec">现在想怎么过</h2>
     <div class="scroller" id="moods"></div>
@@ -553,6 +558,18 @@ function wText(c){if(c==null) return ''; if(c===0) return '晴'; if(c<=3) return
 
 /* ---------- 位置 ---------- */
 function dist(a,b){var R=6371,r=Math.PI/180,dl=(b.lat-a.lat)*r,dn=(b.lng-a.lng)*r; var x=Math.sin(dl/2)*Math.sin(dl/2)+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dn/2)*Math.sin(dn/2); return 2*R*Math.asin(Math.sqrt(x))}
+// 附近范围：定位过才生效。默认 3 km，0 = 不限。推荐和扭蛋都只从这个范围里挑
+var RANGES=[1,3,5,10,0];
+function rangeKm(){return S.range==null?3:S.range}
+function inRange(p){var l=loc(), rg=rangeKm(); if(!l||!rg) return true; return p.lat!=null&&dist(l,p)<=rg}
+// 已经允许过定位的话，打开 app 或切回来时自己更新位置（超过 10 分钟才更新）
+function autoLocate(){
+  if(QS.get('loc')||!navigator.geolocation||!navigator.permissions||!navigator.permissions.query) return;
+  if(S.loc&&Date.now()-S.loc.t<10*60000) return;
+  navigator.permissions.query({name:'geolocation'}).then(function(st){ if(st.state!=='granted') return;
+    navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); if(tab==='home'&&!openId){heroIdx=0; renderHome()}},function(){},{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
+  }).catch(function(){});
+}
 function loc(){ if(QS.get('loc')){var a=QS.get('loc').split(','); return {lat:+a[0],lng:+a[1]}} if(S.loc && Date.now()-S.loc.t<45*60000) return S.loc; return null }
 function zone(){var l=loc(); if(l){ if(dist(l,{lat:35.315,lng:139.53})<14) return 'kamakura'; if(dist(l,{lat:35.68,lng:139.76})<60) return 'tokyo' } return dayNo()===KAMA_DAY?'kamakura':'tokyo'}
 function distText(km){ if(km<1.6) return '步行约 '+Math.max(2,Math.round(km*1000*1.3/78))+' 分'; return '离你约 '+(km<10?km.toFixed(1):Math.round(km))+' km' }
@@ -560,7 +577,7 @@ function distText(km){ if(km<1.6) return '步行约 '+Math.max(2,Math.round(km*1
 /* ---------- 推荐 ---------- */
 function ranked(){
   var z=zone(), l=loc(), sl=slot(), rain=isRain();
-  return PLACES.filter(function(p){return p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id]}).map(function(p){
+  return PLACES.filter(function(p){return p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id] && inRange(p)}).map(function(p){
     var s=rnd[p.id]*1.4, why=[];
     if(S.plan[p.id]===dayNo()){s+=3; why.push('你排在今天')}
     if(S.st[p.id]==='super'){s+=2.5; why.push('你说特别想去')} else if(S.st[p.id]==='want') s+=1.2;
@@ -601,6 +618,8 @@ function renderStatus(){
   h.push('<span class="chip'+(left>0&&left<=90?' blue':'')+'">'+(left>180?'日落 '+W.sunset:left>0?'日落还有 '+(left>=60?Math.floor(left/60)+' 小时 ':'')+(left%60)+' 分':'天黑了，去看夜景')+'</span>');
   h.push('<button class="chip" data-act="locate">'+ico('pin')+(loc()?'已定位':'用我的位置')+'</button>');
   $('#status').innerHTML=h.join('');
+  var rg=rangeKm();
+  $('#range').innerHTML=loc()?'<span class="rlab">只推荐附近</span>'+RANGES.map(function(k){return '<button class="chip fchip'+(rg===k?' on':'')+'" data-act="range" data-v="'+k+'">'+(k?k+' km 内':'不限')+'</button>'}).join(''):'';
   $('#zoneBanner').innerHTML=zone()==='kamakura'?'<div class="banner">'+ico('water')+'今天是镰仓日，推荐都换成了镰仓和江之岛。</div>':'';
 }
 function renderMoods(){
@@ -614,7 +633,9 @@ function heroCard(x,tape){
 }
 function renderHero(){
   var r=ranked();
-  if(!r.length){$('#hero').innerHTML=todayPlan()+'<div class="card empty">这一片的池子空了。<br><span class="muted">去「地点」里把划掉的捞回来，或者换个心情。</span></div>';return}
+  if(!r.length){var rg=rangeKm(), wider=RANGES[RANGES.indexOf(rg)+1];
+    $('#hero').innerHTML=todayPlan()+(loc()&&rg?'<div class="card empty">'+rg+' km 内没有还能去的地点。<br><span class="muted">放宽一点范围，或者去「地点 → 地图」看看附近。</span><div class="row" style="margin-top:12px"><button class="btn mustard" data-act="range" data-v="'+wider+'">'+(wider?'放宽到 '+wider+' km':'不限距离')+'</button></div></div>'
+      :'<div class="card empty">这一片的池子空了。<br><span class="muted">去「地点」里把划掉的捞回来，或者换个心情。</span></div>');return}
   if(heroIdx>=r.length) heroIdx=0;
   $('#hero').innerHTML=todayPlan()+heroCard(r[heroIdx],'现在可以');
 }
@@ -1212,6 +1233,7 @@ document.addEventListener('click',function(e){
   else if(a==='next'){heroIdx++; renderHero()}
   else if(a==='mood'){S.mood=S.mood===v?null:v; heroIdx=0; save(); renderMoods(); renderHero()}
   else if(a==='locate') locate();
+  else if(a==='range'){S.range=+v; save(); heroIdx=0; renderHome(); toast(+v?'只推荐 '+v+' km 内的地点':'不限距离了')}
   else if(a==='qdone'){ if(S.quests[S.qd.i]) delete S.quests[S.qd.i]; else {S.quests[S.qd.i]=1; toast('记下了，今天没白过')} save(); renderQuest(); renderProgress()}
   else if(a==='qnext'){pickQuest(true); renderQuest()}
   else if(a==='gacha') gacha();
@@ -1269,7 +1291,8 @@ function weather(){
     .catch(function(){});
 }
 if(QS.get('rain')) W.code=61;
-renderHome(); weather();
+renderHome(); weather(); autoLocate();
+document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') autoLocate() });
 loadShots().then(function(){ if(SHOTS.length) refresh() }).catch(function(){});
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function(){});
 setInterval(function(){if(tab==='home'&&!openId) renderStatus()},60000);
