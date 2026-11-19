@@ -277,6 +277,8 @@ input.line,textarea{font-size:16px}
 .pin{background:none;border:0}
 .pin b{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;border:2px solid #173A7A;color:#fff;font:700 14px/1 Fredoka,sans-serif;box-shadow:2px 2px 0 #173A7A}
 .leaflet-container{font-family:var(--body)}
+.locbtn a{display:grid!important;place-items:center;color:#173A7A}
+.locbtn .ic{width:18px;height:18px;margin:0;vertical-align:0}
 .mapbox.big{height:min(62vh,540px);margin-top:12px}
 .xpin{background:none;border:0}
 .xpin b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;border:2px solid #173A7A;background:#FFFCF3;color:#173A7A;font:700 14px/1 sans-serif;box-shadow:2px 2px 0 #173A7A}
@@ -773,7 +775,7 @@ function renderPlan(){
 function planMsg(pp,d){return pp.zone==='kamakura'&&d!==KAMA_DAY?'排好了。提醒：这是镰仓的地点，镰仓日是 19 号':pp.zone!=='kamakura'&&d===KAMA_DAY?'排好了。提醒：19 号是镰仓日，这个在东京':'排在 '+dayLabel(d)+' 了'}
 
 /* ---------- 排程地图 ---------- */
-var DAYC=['#E9574D','#2F6FD0','#2F7D5B','#C48A12','#8E44AD','#173A7A','#D35400'], MAP=null, mapDay=0, mapTok=0, LL=null;
+var DAYC=['#E9574D','#2F6FD0','#2F7D5B','#C48A12','#8E44AD','#173A7A','#D35400'], MAP=null, mapDay=0, mapTok=0, LL=null, mapFocusMe=false;
 function hasPos(p){return p.lat!=null&&p.lng!=null}
 // 一天里的地点按顺路排：每个点都试一次当起点，一路走最近的下一个，取总路程最短的那条
 function routeOrder(a){var pos=a.filter(hasPos), rest=a.filter(function(p){return !hasPos(p)}); if(pos.length<3) return pos.concat(rest);
@@ -809,7 +811,7 @@ function mapSheet(){
   loadLeaflet().then(function(L){ setTimeout(function(){ if(tok===mapTok&&openId==='map') drawMap(L,sets,loose,d) },380) },
     function(){var n=$('#mapNote'); if(n&&tok===mapTok) n.textContent='地图要联网才能打开（打开过一次之后，看过的地方会存到手机）。可以先用下面的 Google 路线。'});
 }
-function popHTML(p,d,isLoose,preview){return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+(preview?'':
+function popHTML(p,d,isLoose,preview){var l=loc(); return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+(preview?'':
   '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(isLoose&&d?'<button class="btn small coral" data-act="mapadd" data-id="'+p.id+'" data-v="'+d+'" style="flex:1">排进这天</button>':'')+'</div>')}
 function drawMap(L,sets,loose,d,preview){
   var box=$('#mapBox'); if(!box) return;
@@ -822,6 +824,13 @@ function drawMap(L,sets,loose,d,preview){
       L.marker(ll,{icon:L.divIcon({className:'pin',html:'<b style="background:'+(S.stamps[p.id]?'#9aa5b8':col)+'">'+(many?k:'')+'</b>',iconSize:[30,30],iconAnchor:[15,15],popupAnchor:[0,-14]}),zIndexOffset:1000}).addTo(MAP).bindPopup(popHTML(p,x.d,false,preview))});
     if(line.length>1) L.polyline(line,{color:col,weight:3,dashArray:'6 7',opacity:.85}).addTo(MAP)});
   if(pts.length>1) MAP.fitBounds(pts,{padding:[34,34],maxZoom:16}); else if(pts.length) MAP.setView(pts[0],15); else MAP.setView(d===KAMA_DAY?[35.32,139.55]:[35.68,139.76],d===KAMA_DAY?13:11);
+  // 你在哪：最近 45 分钟定位过就显示蓝点；左上角的按钮可以重新定位
+  var me=loc(); if(me) L.marker([me.lat,me.lng],{icon:L.divIcon({className:'',html:'<i class="xme"></i>',iconSize:[18,18],iconAnchor:[9,9]}),interactive:false,zIndexOffset:-1000}).addTo(MAP);
+  var LocBtn=L.Control.extend({options:{position:'topleft'},onAdd:function(){var c=L.DomUtil.create('div','leaflet-bar leaflet-control locbtn'), a=L.DomUtil.create('a','',c);
+    a.href='#'; a.title='我在哪'; a.setAttribute('role','button'); a.setAttribute('aria-label','定位到我在哪'); a.innerHTML=ico('pin');
+    L.DomEvent.disableClickPropagation(c); L.DomEvent.on(a,'click',function(e){L.DomEvent.preventDefault(e); locate()}); return c}});
+  new LocBtn().addTo(MAP);
+  if(mapFocusMe&&me){mapFocusMe=false; MAP.setView([me.lat,me.lng],Math.max(MAP.getZoom(),14))}
   // Leaflet 的弹窗会拦住点击冒泡，所以按钮在这里单独接
   MAP.on('popupopen',function(e){[].forEach.call(e.popup.getElement().querySelectorAll('[data-act]'),function(b){b.addEventListener('click',function(ev){ev.stopPropagation();
     if(b.dataset.act==='open') openDetail(b.dataset.id);
@@ -1213,7 +1222,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&openId) clo
 function locate(){
   if(!navigator.geolocation){toast('这台设备拿不到定位');return}
   toast('正在找你在哪…');
-  navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); heroIdx=0; renderHome(); if(tab==='list'&&listMode==='map'){xFit=true; renderExplore()} toast(zone()==='kamakura'?'你在镰仓一带':'定位好了，按远近重新排过')},
+  navigator.geolocation.getCurrentPosition(function(g){S.loc={lat:g.coords.latitude,lng:g.coords.longitude,t:Date.now()}; save(); heroIdx=0; renderHome(); if(tab==='list'&&listMode==='map'){xFit=true; renderExplore()} if(openId==='map'){mapFocusMe=true; mapSheet()} else if(openId==='auto'&&AP){mapFocusMe=true; autoSheet()} toast(zone()==='kamakura'?'你在镰仓一带':'定位好了，按远近重新排过')},
     function(){toast('没拿到定位，先按时间和心情推荐')},{enableHighAccuracy:false,timeout:10000,maximumAge:300000});
 }
 function weather(){
