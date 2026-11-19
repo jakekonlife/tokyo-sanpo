@@ -259,7 +259,9 @@ input.line{width:100%;font:inherit;color:inherit;border:var(--line);border-radiu
 .prow small{opacity:.7;font-size:12px}
 .prow.done b{text-decoration:line-through;opacity:.6}
 .prow .tick{margin-left:auto;flex:none;font-family:var(--display);color:var(--coral);font-size:15px}
-.hop{font-size:12px;opacity:.7;margin:0 0 0 12px;padding:2px 0 2px 14px;border-left:2px dashed rgba(23,58,122,.4);line-height:18px}
+.hop{display:flex;flex-wrap:wrap;gap:0 8px;align-items:baseline;font-size:12px;color:rgba(23,58,122,.75);text-decoration:none;margin:0 0 0 12px;padding:3px 0 3px 14px;border-left:2px dashed rgba(23,58,122,.4);line-height:18px}
+.hopg{color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.preview .hop{pointer-events:auto}
 .hop+.prow{border-top:0}
 .daysum{margin:0 0 4px;font-size:12.5px}
 .preview .prow{pointer-events:none}
@@ -752,7 +754,7 @@ function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=routeO
   return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。'+(a.length>1?'已经按顺路排好。':'')+'</p>'+sumLine(a)+numbered(a,d)+dayFoot(d,a)+'</div>'}
 // 列表里两站之间写上路上大概多久；fresh 里有的地点标「新排的」
 function numbered(a,d,fresh){var k=0, many=a.filter(hasPos).length>1, prev=null, h='';
-  a.forEach(function(p){ if(prev&&hasPos(p)) h+='<div class="hop">'+hopText(hopMin(prev,p))+'</div>'; h+=prow(p,many&&hasPos(p)?++k:0,DAYC[d-1],fresh&&fresh[p.id]?'新排的':''); if(hasPos(p)) prev=p });
+  a.forEach(function(p){ if(prev&&hasPos(p)){var hm=hopMin(prev,p); h+='<a class="hop" href="'+legUrl(prev,p,hm.walk)+'" target="_blank" rel="noopener">'+hopText(hm)+'<span class="hopg">看 Google 实际时间 ›</span></a>'} h+=prow(p,many&&hasPos(p)?++k:0,DAYC[d-1],fresh&&fresh[p.id]?'新排的':''); if(hasPos(p)) prev=p });
   return h}
 
 /* ---------- 路上时间（按直线距离粗估，不是实际路线） ---------- */
@@ -760,6 +762,8 @@ function numbered(a,d,fresh){var k=0, many=a.filter(hasPos).length>1, prev=null,
 function hopMin(a,b){var km=dist(a,b)*1.3; if(km<=1.5) return {walk:true,m:Math.max(3,Math.round(km*13))}; return {walk:false,m:Math.round((15+Math.min(km,10)*2.2+Math.max(0,km-10))/5)*5}}
 function travelMin(a){var pos=a.filter(hasPos), t=0; for(var i=1;i<pos.length;i++) t+=hopMin(pos[i-1],pos[i]).m; return t}
 function minText(m){return m<60?m+' 分钟':(Math.round(m/30)/2)+' 小时'}
+// 两站之间：在 Google Maps 里查这一段（坐车的用大众运输，走路的用步行）
+function legUrl(a,b,walk){var e=encodeURIComponent; return 'https://www.google.com/maps/dir/?api=1&origin='+e(a.jp)+'&destination='+e(b.jp)+'&travelmode='+(walk?'walking':'transit')}
 function hopText(h){return (h.walk?'走路':'坐车')+'约 '+minText(h.m)}
 function sumLine(a){var stay=a.reduce(function(t,p){return t+p.mins},0), tr=travelMin(a);
   return '<p class="muted daysum">停留约 '+minText(stay)+(tr?' · 路上约 '+minText(tr)+' · 一共约 '+minText(stay+tr):'')+'</p>'}
