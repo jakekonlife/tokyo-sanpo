@@ -295,6 +295,15 @@ input.line,textarea{font-size:16px}
 .rangerow:empty{display:none}
 .rangerow .rlab{font-size:12px;font-weight:700;opacity:.8;margin-right:2px}
 .rangerow .chip{padding:1px 10px;font-size:12px}
+/* 吃喝 */
+.qeat{gap:6px;margin:0;align-items:center}
+.qeat a.chip{text-decoration:none;box-shadow:2px 2px 0 var(--navy)}
+.qeat .rlab{font-size:12px;font-weight:700;opacity:.8}
+.prow .noimg{display:grid;place-items:center}
+.prow .noimg .ic{width:30px;height:30px;margin:0}
+.xpin.e b{background:#fff}
+.xpin.e b .ic{width:17px;height:17px;margin:0}
+.xpin.e.v b{background:#9aa5b8}
 .mapbox.big{height:min(62vh,540px);margin-top:12px}
 .xpin{background:none;border:0}
 .xpin b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;border:2px solid #173A7A;background:#FFFCF3;color:#173A7A;font:700 14px/1 sans-serif;box-shadow:2px 2px 0 #173A7A}
@@ -375,6 +384,8 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
     <div class="scroller" id="moods"></div>
     <div style="height:18px"></div>
     <div id="hero"></div>
+    <h2 class="sec">附近吃喝</h2>
+    <div id="eats"></div>
     <h2 class="sec">散步小任务</h2>
     <div id="quest"></div>
     <h2 class="sec">集章进度</h2>
@@ -473,8 +484,9 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
 
   <!-- 地点 -->
   <section class="view" id="v-list">
-    <div class="seg" style="margin:0 0 4px"><button data-act="lmode" data-v="list" class="on">想去池</button><button data-act="lmode" data-v="plan">小排程</button><button data-act="lmode" data-v="map">地图</button></div>
+    <div class="seg" style="margin:0 0 4px"><button data-act="lmode" data-v="list" class="on">想去池</button><button data-act="lmode" data-v="eat">吃喝</button><button data-act="lmode" data-v="plan">小排程</button><button data-act="lmode" data-v="map">地图</button></div>
     <div id="planPane" hidden></div>
+    <div id="eatPane" hidden></div>
     <div id="mapPane" hidden></div>
     <div id="listPane">
     <h2 class="sec">想去池</h2>
@@ -516,6 +528,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
 <script src="places.js"></script>
 <script src="photos.js"></script>
 <script src="reviews.js"></script>
+<script src="eats.js"></script>
 <script>
 (function(){
 'use strict';
@@ -531,10 +544,21 @@ var ICONS={
   rain:'<path d="M16 3v2" fill="none"/><path d="M3.500 17a12.500 12.500 0 0 1 25 0q-3.100-3-6.250 0-3.100-3-6.250 0-3.100-3-6.250 0-3.100-3-6.250 0z" fill="#2F6FD0"/><path d="M16 17v8.500a3 3 0 0 1-6 0" fill="none"/>',
   pin:'<path d="M16 29q-9-9.500-9-16a9 9 0 0 1 18 0q0 6.500-9 16z" fill="#E9574D"/><circle cx="16" cy="13" r="3.500" fill="#fff"/>'
 };
+ICONS.cafe=ICONS.sit;
+ICONS.food='<path d="M4 15h24a12 9 0 0 1-24 0z" fill="#E9B93E"/><path d="M17 12l9-8M13 12l6-9" fill="none"/><path d="M11 27.500h10" fill="none"/>';
+ICONS.seafood='<path d="M3 16q8-9 18 0q-10 9-18 0z" fill="#8CC3F0"/><path d="M21 16l7-5v10z" fill="#E9574D"/><circle cx="9" cy="14.500" r="1.300" fill="#173A7A" stroke="none"/>';
+ICONS.bar='<path d="M6 6h20l-10 11z" fill="#F6B9B2"/><path d="M16 17v9M11 27h10" fill="none"/><circle cx="23" cy="6" r="3" fill="#E9B93E"/>';
+ICONS.izakaya='<rect x="9" y="5" width="14" height="21" rx="7" fill="#E9574D"/><path d="M9.500 11h13M9.500 20h13M16 2.500v2.500M16 26v3.500" fill="none"/>';
+ICONS.sweet='<path d="M10 14l6 15 6-15z" fill="#E9B93E"/><circle cx="16" cy="10.500" r="6.500" fill="#F6B9B2"/>';
 function ico(k){return '<svg class="ic" viewBox="0 0 32 32" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">'+ICONS[k]+'</svg>'}
 var BEST={am:'上午',pm:'下午',sunset:'黄昏',night:'夜里'};
 var KEY='tokyo-sanpo-v1';
 var $=function(s){return document.querySelector(s)};
+// 吃喝精选（eats.js）：跟景点放进同一个 PLACES，详情、想去、排程、盖章、地图都能用；用 eat:true 区分，
+// 首页景点推荐、扭蛋、挑一挑、「帮我排」都不会出现它们
+var KINDS=window.EAT_KINDS||{cafe:'咖啡',food:'吃饭',bar:'喝一杯',sweet:'甜点'};
+(window.EATS||[]).forEach(function(e){var p=Object.assign({eat:true,book:false,tip:''},e); PLACES.push(p); if(e.g&&typeof REVIEWS!=='undefined') REVIEWS[e.id]=Object.assign({at:window.EATS_AT},e.g)});
+function sight(p){return !p.eat}
 var byId={}; PLACES.forEach(function(p){byId[p.id]=p});
 var QS=new URLSearchParams(location.search);
 
@@ -577,7 +601,7 @@ function distText(km){ if(km<1.6) return '步行约 '+Math.max(2,Math.round(km*1
 /* ---------- 推荐 ---------- */
 function ranked(){
   var z=zone(), l=loc(), sl=slot(), rain=isRain();
-  return PLACES.filter(function(p){return p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id] && inRange(p)}).map(function(p){
+  return PLACES.filter(function(p){return !p.eat && p.zone===z && S.st[p.id]!=='skip' && !S.stamps[p.id] && inRange(p)}).map(function(p){
     var s=rnd[p.id]*1.4, why=[];
     if(S.plan[p.id]===dayNo()){s+=3; why.push('你排在今天')}
     if(S.st[p.id]==='super'){s+=2.5; why.push('你说特别想去')} else if(S.st[p.id]==='want') s+=1.2;
@@ -594,7 +618,7 @@ function ranked(){
 /* ---------- 小零件 ---------- */
 function pics(p){return (window.PHOTOS&&PHOTOS[p.id])||[]}
 function photo(p,size,i){var o=pics(p)[i||0]; if(!o){ if(p.custom&&!i){var m=shotsOf(p.id)[0]; return m?m.thumb:''} return ''} var u=o.img; if(size&&o.w>=size) u=u.replace(/\/\d+px-/,'/'+size+'px-'); return u}
-function ph(p,size,extra,i){var u=photo(p,size,i); return '<span class="ph"><i class="ico">'+ico(p.tags[0])+'</i>'+(u?'<img src="'+u+'" alt="'+p.zh+'" loading="lazy" draggable="false" crossorigin="anonymous" onerror="this.remove()">':'')+(extra||'')+'</span>'}
+function ph(p,size,extra,i){var u=photo(p,size,i); return '<span class="ph"><i class="ico">'+ico(p.kind||p.tags[0])+'</i>'+(u?'<img src="'+u+'" alt="'+p.zh+'" loading="lazy" draggable="false" crossorigin="anonymous" onerror="this.remove()">':'')+(extra||'')+'</span>'}
 function maps(p){return p.url||'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.jp)}
 function route(p){return 'https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(p.jp)+'&travelmode=transit'}
 function toast(t){var el=$('#toast'); el.textContent=t; el.classList.add('on'); clearTimeout(toast.t); toast.t=setTimeout(function(){el.classList.remove('on')},1900)}
@@ -653,9 +677,38 @@ function renderQuest(){
 }
 function renderProgress(){
   var n=Object.keys(S.stamps).length, q=Object.keys(S.quests).length;
-  $('#progress').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">盖了 '+n+' 个章 · 做了 '+q+' 件小事</b><div class="prog"><i style="width:'+Math.round(n/PLACES.length*100)+'%"></i></div><p class="muted" style="margin:8px 0 0">到了一个地方，在它的详情里按「盖章」。</p></div>';
+  $('#progress').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">盖了 '+n+' 个章 · 做了 '+q+' 件小事</b><div class="prog"><i style="width:'+Math.min(100,Math.round(n/PLACES.filter(sight).length*100))+'%"></i></div><p class="muted" style="margin:8px 0 0">到了一个地方，在它的详情里按「盖章」。</p></div>';
 }
-function renderHome(){renderStatus();renderMoods();renderHero();renderQuest();renderProgress()}
+function renderHome(){renderStatus();renderMoods();renderHero();renderEatsCard();renderQuest();renderProgress()}
+
+/* ---------- 附近吃喝（跟景点分开） ---------- */
+var QUICK=window.EAT_QUICK||[['cafe','咖啡','cafe'],['food','吃饭','restaurant'],['bar','喝一杯','bar'],['sweet','甜点','dessert']], eatKind='all';
+function eatCenter(){return loc()||({tokyo:{lat:35.68,lng:139.76},kamakura:{lat:35.3192,lng:139.5503}})[zone()]}
+// 在 Google Maps 里搜你附近（没定位就搜这一区的中心）
+function gsearch(q){var c=eatCenter(); return 'https://www.google.com/maps/search/'+encodeURIComponent(q)+'/@'+c.lat.toFixed(5)+','+c.lng.toFixed(5)+',15z'}
+function quickLinks(){return QUICK.map(function(k){return '<a class="chip" href="'+gsearch(k[2])+'" target="_blank" rel="noopener">'+ico(k[0])+k[1]+'</a>'}).join('')}
+function kmText(km){return km<1?Math.round(km*100)*10+' m':(km<10?km.toFixed(1):Math.round(km))+' km'}
+function eatTag(p){var v=REVIEWS[p.id], l=loc(); return (v?v.r.toFixed(1)+'★':'')+(l&&p.lat!=null?' · '+kmText(dist(l,p)):'')}
+function nearEats(n){var l=loc(), sl=slot(), z=zone();
+  return PLACES.filter(function(p){return p.eat&&S.st[p.id]!=='skip'&&!S.stamps[p.id]&&(l?p.lat!=null&&inRange(p):p.zone===z)}).map(function(p){
+    var s=0, v=REVIEWS[p.id]; if(l) s-=dist(l,p); if(p.best.indexOf(sl)>=0) s+=3; if(S.st[p.id]==='super') s+=4; else if(S.st[p.id]==='want') s+=2; if(v) s+=(v.r-4)*2;
+    return {p:p,s:s}}).sort(function(a,b){return b.s-a.s}).slice(0,n).map(function(x){return x.p})}
+function renderEatsCard(){
+  var a=nearEats(3), l=loc(), all=PLACES.filter(function(p){return p.eat}).length;
+  $('#eats').innerHTML='<div class="card dayc"><div class="chips qeat">'+quickLinks()+'</div>'+
+    '<p class="muted" style="margin:8px 0 4px">'+(l?'上面直接在 Google Maps 搜你附近的；下面是精选里离你近、现在合适的：':'上面在 Google Maps 搜'+(zone()==='kamakura'?'镰仓':'东京')+'附近（定位后改成搜你身边）；下面是这一区的精选：')+'</p>'+
+    (a.length?a.map(function(p){return prow(p,0,null,eatTag(p))}).join(''):'<p class="muted" style="margin:4px 0 0">这一区的精选都去过或划掉了。</p>')+
+    '<div class="row" style="margin-top:10px"><button class="btn small" data-act="eatall" style="flex:1">看全部 '+all+' 家吃喝精选 ›</button></div></div>';
+}
+function renderEats(){
+  var l=loc(), list=PLACES.filter(function(p){return p.eat&&(eatKind==='all'||p.kind===eatKind)});
+  if(l) list.sort(function(a,b){return dist(l,a)-dist(l,b)});
+  $('#eatPane').innerHTML='<h2 class="sec">吃喝精选</h2><p class="muted" style="margin:-4px 0 10px">跟景点分开放，不会出现在首页景点推荐、扭蛋和「帮我排」里。'+(l?'按离你远近排。':'定位后会按离你远近排。')+'</p>'+
+    '<div class="scroller">'+[['all','全部']].concat(Object.keys(KINDS).map(function(k){return [k,ico(k)+KINDS[k]]})).map(function(f){return '<button class="chip fchip'+(eatKind===f[0]?' on':'')+'" data-act="eatkind" data-v="'+f[0]+'">'+f[1]+'</button>'}).join('')+'</div>'+
+    '<div class="chips qeat" style="margin:4px 0 14px"><span class="rlab">在 Google 搜附近：</span>'+quickLinks()+'</div>'+
+    '<div class="grid">'+(list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
+      return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500,'<span class="area">'+KINDS[p.kind]+'</span>')+'<b>'+p.zh+'</b><small>'+eatTag(p)+(eatTag(p)?' · ':'')+p.area+'</small></button>'}).join(''):'<div class="card empty" style="grid-column:1/-1">这一类还没有精选</div>')+'</div>';
+}
 
 /* ---------- 扭蛋 ---------- */
 var spinning=false;
@@ -673,7 +726,7 @@ function gacha(){
 
 /* ---------- 滑卡 ---------- */
 var deckOrder=PLACES.map(function(p){return p.id}).sort(function(a,b){return rnd[a]-rnd[b]});
-function queue(){return deckOrder.filter(function(id){return !S.st[id] && !S.stamps[id]}).map(function(id){return byId[id]})}
+function queue(){return deckOrder.filter(function(id){return byId[id] && !byId[id].eat && !S.st[id] && !S.stamps[id]}).map(function(id){return byId[id]})}
 function renderSwipe(){
   var q=queue(), el=$('#deck');
   $('#swipeBtns').style.visibility=q.length?'visible':'visible';
@@ -719,8 +772,8 @@ function greview(p){
     '<div class="gr-top"><b>'+v.r.toFixed(1)+'</b><span class="gr-stars">★★★★★<i style="width:'+(v.r/5*100).toFixed(0)+'%">★★★★★</i></span><span class="muted">Google · '+v.n.toLocaleString('en-US')+' 条评价</span></div>'+
     (v.warn?'<div class="gr-warn">⚠ '+v.warn+'</div>':'')+
     '<div class="gr-q good"><em>好评</em><span>'+v.good+'</span></div>'+
-    '<div class="gr-q bad"><em>差评</em><span>'+v.bad+'</span></div>'+
-    '<div class="gr-more"><span>'+REVIEWS_AT.slice(5).replace('-','/')+' 查的 · 评价是转述，不是原文</span><span>去 Google 看全部 ›</span></div></a>';
+    (v.bad?'<div class="gr-q bad"><em>差评</em><span>'+v.bad+'</span></div>':'')+
+    '<div class="gr-more"><span>'+(v.at||REVIEWS_AT).slice(5).replace('-','/')+' 查的 · 评价是转述，不是原文</span><span>去 Google 看全部 ›</span></div></a>';
 }
 
 /* ---------- 自己加的地点 ---------- */
@@ -779,7 +832,7 @@ function delPlace(id){
 var WK=['一','二','三','四','五','六','日'], listMode='list';
 function dayLabel(d){return '11/'+(15+d)+' 周'+WK[d-1]}
 function planned(d){return PLACES.filter(function(p){return S.plan[p.id]===d})}
-function prow(p,n,col,tag){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(n?'<span class="num" style="background:'+(sp?'#9aa5b8':col||'var(--coral)')+'">'+n+'</span>':'')+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg"></span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':tag?'<span class="tick" style="color:var(--blue)">'+tag+'</span>':'')+'</button>'}
+function prow(p,n,col,tag){var u=photo(p,500), sp=S.stamps[p.id]; return '<button class="prow'+(sp?' done':'')+'" data-act="open" data-id="'+p.id+'">'+(n?'<span class="num" style="background:'+(sp?'#9aa5b8':col||'var(--coral)')+'">'+n+'</span>':'')+(u?'<img src="'+u+'" alt="" loading="lazy" crossorigin="anonymous">':'<span class="noimg">'+(p.kind?ico(p.kind):'')+'</span>')+'<span><b>'+p.zh+'</b><small>'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></span>'+(sp?'<span class="tick">去过了</span>':tag?'<span class="tick" style="color:var(--blue)">'+tag+'</span>':'')+'</button>'}
 function daySelector(id){return '<div class="days">'+WK.map(function(w,i){var d=i+1; return '<button data-act="plan" data-v="'+d+'" class="'+(S.plan[id]===d?'on':'')+(d===KAMA_DAY?' k':'')+'" aria-pressed="'+(S.plan[id]===d)+'" aria-label="'+dayLabel(d)+(d===KAMA_DAY?' 镰仓日':'')+'">'+(15+d)+'<small>周'+w+'</small></button>'}).join('')+'</div>'}
 function todayPlan(){var d=dayNo(); if(d<1||d>TRIP_DAYS) return ''; var a=routeOrder(planned(d).filter(function(p){return !S.stamps[p.id]})); if(!a.length) return '';
   return '<div class="card dayc"><h3>今天原本想去</h3><p class="muted" style="margin:0 0 4px">只是之前的打算，不去也没关系。'+(a.length>1?'已经按顺路排好。':'')+'</p>'+sumLine(a)+numbered(a,d)+dayFoot(d,a)+'</div>'}
@@ -846,7 +899,7 @@ function mapSheet(){
   loadLeaflet().then(function(L){ setTimeout(function(){ if(tok===mapTok&&openId==='map') drawMap(L,sets,loose,d) },380) },
     function(){var n=$('#mapNote'); if(n&&tok===mapTok) n.textContent='地图要联网才能打开（打开过一次之后，看过的地方会存到手机）。可以先用下面的 Google 路线。'});
 }
-function popHTML(p,d,isLoose,preview){var l=loc(); return '<b>'+p.zh+'</b><br><span class="muted">'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+(preview?'':
+function popHTML(p,d,isLoose,preview){var l=loc(); return '<b>'+p.zh+'</b><br><span class="muted">'+(p.eat?KINDS[p.kind]+(REVIEWS[p.id]?' '+REVIEWS[p.id].r.toFixed(1)+'★':'')+' · ':'')+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':'')+'</span>'+(preview?'':
   '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(isLoose&&d?'<button class="btn small coral" data-act="mapadd" data-id="'+p.id+'" data-v="'+d+'" style="flex:1">排进这天</button>':'')+'</div>')}
 function drawMap(L,sets,loose,d,preview){
   var box=$('#mapBox'); if(!box) return;
@@ -875,7 +928,7 @@ function drawMap(L,sets,loose,d,preview){
 
 /* ---------- 帮我排：把想去但还没排的地点按位置分进剩下的日子 ---------- */
 var AP=null;
-function autoCands(){return PLACES.filter(function(p){return (S.st[p.id]==='want'||S.st[p.id]==='super')&&!S.plan[p.id]&&!S.stamps[p.id]})}
+function autoCands(){return PLACES.filter(function(p){return !p.eat&&(S.st[p.id]==='want'||S.st[p.id]==='super')&&!S.plan[p.id]&&!S.stamps[p.id]})}
 function dayLoad(a){return a.reduce(function(t,p){return t+p.mins},0)+travelMin(routeOrder(a))}
 // 每天大约 7 小时（含路上）；今天只算到晚上 9 点还剩多少
 function capOf(d){ if(d!==dayNo()) return 420; var t=tk(), left=21*60-(t.getHours()*60+t.getMinutes()); return Math.max(0,Math.min(420,left)) }
@@ -943,19 +996,19 @@ function matchP(p,words){var st=S.st[p.id];
   if(filter==='mine') return !!p.custom; if(filter==='liked') return st==='want'||st==='super'; if(filter==='skip') return st==='skip'; return p.tags.indexOf(filter)>=0}
 
 /* ---------- 大地图：所有地点、你在哪、地图中间附近有什么 ---------- */
-var XMAP=null, XL=null, XME=null, xFit=true, xNearT=0;
+var XMAP=null, XL=null, XME=null, xFit=true, xNearT=0, xEat=true;
 function xKind(p){return S.stamps[p.id]?'v':S.st[p.id]==='super'?'s':S.st[p.id]==='want'?'w':'n'}
-function xIcon(L,p){var k=xKind(p), sz=k==='n'?20:28; return L.divIcon({className:'xpin '+k,html:'<b>'+{s:'★',w:'♥',v:'印',n:''}[k]+'</b>',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2]})}
-function xVisible(){return PLACES.filter(function(p){return hasPos(p)&&matchP(p,[])&&(filter==='skip'||S.st[p.id]!=='skip')})}
+function xIcon(L,p){ if(p.eat) return L.divIcon({className:'xpin e'+(S.stamps[p.id]?' v':''),html:'<b>'+ico(p.kind)+'</b>',iconSize:[24,24],iconAnchor:[12,12],popupAnchor:[0,-12]}); var k=xKind(p), sz=k==='n'?20:28; return L.divIcon({className:'xpin '+k,html:'<b>'+{s:'★',w:'♥',v:'印',n:''}[k]+'</b>',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2],popupAnchor:[0,-sz/2]})}
+function xVisible(){return PLACES.filter(function(p){return hasPos(p)&&(!p.eat||xEat)&&matchP(p,[])&&(filter==='skip'||S.st[p.id]!=='skip')})}
 function xPop(p){var l=loc(), u=photo(p,500), d=dayNo(), canToday=d>=1&&d<=TRIP_DAYS&&S.plan[p.id]!==d&&!S.stamps[p.id];
-  return (u?'<img class="xpimg" src="'+u+'" alt="" crossorigin="anonymous" onerror="this.remove()">':'')+'<b>'+p.zh+'</b><br><span class="muted">'+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':S.plan[p.id]?' · 排在 '+dayLabel(S.plan[p.id]):'')+'</span>'+
+  return (u?'<img class="xpimg" src="'+u+'" alt="" crossorigin="anonymous" onerror="this.remove()">':'')+'<b>'+p.zh+'</b><br><span class="muted">'+(p.eat?KINDS[p.kind]+(REVIEWS[p.id]?' '+REVIEWS[p.id].r.toFixed(1)+'★':'')+' · ':'')+p.area+(p.zone==='kamakura'?' · 镰仓':'')+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(l?' · '+distText(dist(l,p)):'')+(S.stamps[p.id]?' · 去过了':S.plan[p.id]?' · 排在 '+dayLabel(S.plan[p.id]):'')+'</span>'+
     '<div class="row"><button class="btn small" data-act="open" data-id="'+p.id+'" style="flex:1">看详情</button>'+(canToday?'<button class="btn small coral" data-act="xtoday" data-id="'+p.id+'" style="flex:1">排进今天</button>':'')+'</div>'}
 function renderExplore(){
   var pane=$('#mapPane');
   if(!pane.firstChild) pane.innerHTML='<h2 class="sec">地图</h2><div class="scroller" id="xfilters"></div>'+
     '<div class="row" style="margin:6px 0 0;align-items:center"><button class="btn small" data-act="locate" id="xLoc"></button><span class="muted" style="font-size:12px;line-height:1.4">★ 特别想去　♥ 想去<br>小圆点 还没决定　灰色 去过了</span></div>'+
     '<div class="mapbox big" id="xMap"></div><p class="muted" id="xNote" style="margin:0 0 4px">点图钉看看是什么地方；拖动地图，下面会列出地图中间附近的地点。</p><h4 class="mine">地图中间附近</h4><div class="card dayc" id="xNear"></div>';
-  $('#xfilters').innerHTML=filterChips();
+  $('#xfilters').innerHTML=filterChips()+'<button class="chip fchip'+(xEat?' on':'')+'" data-act="xeat">'+ico('food')+'吃喝</button>';
   $('#xLoc').innerHTML=ico('pin')+(loc()?'回到我这里':'用我的位置');
   loadLeaflet().then(function(L){ if(tab==='list'&&listMode==='map') xDraw(L) },
     function(){$('#xNote').textContent='地图要联网才能打开第一次（之后看过的地方会存到手机）。'});
@@ -985,13 +1038,14 @@ function xNear(){var el=$('#xNear'); if(!el||!XMAP) return; var c=XMAP.getCenter
   var near=xVisible().map(function(p){return {p:p,d:dist({lat:c.lat,lng:c.lng},p)}}).sort(function(a,b){return a.d-b.d}).slice(0,6);
   el.innerHTML=near.length?near.map(function(x){var k=l?dist(l,x.p):null; return prow(x.p,0,null,k==null?'':k<1?Math.round(k*100)*10+' m':(k<10?k.toFixed(1):Math.round(k))+' km')}).join(''):'<p class="muted" style="margin:0">这个筛选下没有地点。</p>'}
 function renderList(){
-  $('#planPane').hidden=listMode!=='plan'; $('#mapPane').hidden=listMode!=='map'; $('#listPane').hidden=listMode!=='list';
+  $('#planPane').hidden=listMode!=='plan'; $('#mapPane').hidden=listMode!=='map'; $('#listPane').hidden=listMode!=='list'; $('#eatPane').hidden=listMode!=='eat';
   [].forEach.call(document.querySelectorAll('[data-act=lmode]'),function(b){b.classList.toggle('on',b.dataset.v===listMode)});
   if(listMode==='plan') return renderPlan();
   if(listMode==='map') return renderExplore();
+  if(listMode==='eat') return renderEats();
   $('#filters').innerHTML=filterChips();
   var q=($('#q').value||'').trim().toLowerCase(), words=q?q.split(/\s+/):[];
-  var list=PLACES.filter(function(p){return matchP(p,words)});
+  var list=PLACES.filter(function(p){return !p.eat&&matchP(p,words)});
   $('#grid').innerHTML=list.length?list.map(function(p){var st=S.st[p.id], b=S.stamps[p.id]?'<span class="badge v">印</span>':st==='super'?'<span class="badge">★</span>':st==='want'?'<span class="badge" style="background:#fff;color:var(--blue)">♥</span>':'';
     return '<button class="pcard'+(st==='skip'?' skip':'')+'" data-act="open" data-id="'+p.id+'">'+b+ph(p,500)+'<b>'+p.zh+'</b><small>'+p.area+' · '+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+'</small></button>'}).join('')
     :'<div class="card empty" style="grid-column:1/-1">'+(q?'没找到「'+q.replace(/[<>&]/g,'')+'」<br><span class="muted">换个词，或者把上面的筛选切回「全部」。</span><div class="row" style="margin-top:12px"><button class="btn mustard" data-act="addp" data-v="'+q.replace(/[<>&"']/g,'')+'">把它加成自己的地点</button></div>':'这里还是空的')+'</div>';
@@ -1001,7 +1055,7 @@ function renderList(){
 function renderBook(){
   var n=Object.keys(S.stamps).length;
   $('#bookTop').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:20px">'+(n?'已经盖了 '+n+' 个章':'还没有章')+'</b><p class="muted" style="margin:4px 0 0">'+(n?'点开任何一个章，可以写一句话、放上你拍的照片。':'到了一个地方，打开它的详情按「盖章」，这里就会多一枚。')+'</p></div>';
-  var got=PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t}), rest=PLACES.filter(function(p){return !S.stamps[p.id] && S.st[p.id]!=='skip'});
+  var got=PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t}), rest=PLACES.filter(function(p){return !p.eat && !S.stamps[p.id] && S.st[p.id]!=='skip'});
   $('#book').innerHTML=got.concat(rest).map(function(p){var mine=shotsOf(p.id); return S.stamps[p.id]?(mine.length?'<button class="slot got pic" data-act="open" data-id="'+p.id+'"><img src="'+mine[0].thumb+'" alt="'+p.zh+'">'+(mine.length>1?'<em>'+mine.length+'</em>':'')+stampSVG(p,justStamped===p.id?'thud':'')+'</button>':'<button class="slot got" data-act="open" data-id="'+p.id+'">'+stampSVG(p,justStamped===p.id?'thud':'')+'</button>'):'<button class="slot" data-act="open" data-id="'+p.id+'">'+p.zh+'</button>'}).join('');
   justStamped=null;
   var done=Object.keys(S.quests);
@@ -1203,13 +1257,13 @@ function openDetail(id){
     '<h3>'+p.zh+'</h3>'+(p.jp!==p.zh?'<p class="jp">'+p.jp+'</p>':'<p class="jp"></p>')+
     '<div class="chips" style="margin:0 0 10px">'+p.tags.map(function(t){return '<span class="chip">'+ico(t)+TAGS[t][1]+'</span>'}).join('')+'</div>'+
     (p.blurb?'<p style="margin:0">'+p.blurb+'</p>':'')+
-    '<div class="tipbox">'+(p.custom?'<b>自己加的地点</b><br><span class="muted">大约待 ':'<b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 ')+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
+    '<div class="tipbox">'+(p.custom?'<b>自己加的地点</b><br><span class="muted">大约待 ':p.eat?'<b>推荐点　</b>'+p.dish+'<br>'+p.tip+'<br><span class="muted">'+KINDS[p.kind]+(p.hours?' · '+p.hours:'')+' · 适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 ':'<b>小贴士　</b>'+p.tip+'<br><span class="muted">适合 '+p.best.map(function(b){return BEST[b]}).join('、')+' · 大约待 ')+(p.mins>=120?Math.round(p.mins/60*2)/2+' 小时':p.mins+' 分钟')+(d!=null?' · '+distText(d):'')+(p.book?' · 需要预约':'')+'</span></div>'+
     greview(p)+
     '<div class="row"><a class="btn primary" href="'+maps(p)+'" target="_blank" rel="noopener" style="flex:1.5">Google Maps</a><a class="btn" href="'+route(p)+'" target="_blank" rel="noopener">怎么去</a></div>'+
     '<div class="seg"><button data-act="st" data-v="super" class="'+(st==='super'?'on':'')+'">★ 特别想去</button><button data-act="st" data-v="want" class="'+(st==='want'?'on':'')+'">♥ 想去</button><button data-act="st" data-v="skip" class="'+(st==='skip'?'on':'')+'">✕ 不去</button></div>'+
     '<h4 class="mine" style="margin-top:4px">大概哪天去 <span class="muted" style="font-family:var(--body)">'+(S.plan[id]?'排在 '+dayLabel(S.plan[id])+'，再点一下拿掉':'不排也行')+'</span></h4>'+daySelector(id)+
     (sp?'<div class="stamped-row">'+stampSVG(p)+'<div><b style="font-family:var(--display);font-weight:400;font-size:18px">'+sp.d+' 来过这里</b><br><button class="btn small" data-act="unstamp" style="margin-top:6px">撤销盖章</button></div></div><textarea id="note" placeholder="给这一天写一句话…" aria-label="给这一天写一句话"></textarea>'
-       :'<div class="row"><button class="btn coral" data-act="stamp">盖章：我来过了</button></div>')+
+       :'<div class="row"><button class="btn coral" data-act="stamp">'+(p.eat?'盖章：吃过了':'盖章：我来过了')+'</button></div>')+
     '<h4 class="mine">我拍的照片</h4>'+shotsHTML(id)+(sp?'':'<p class="muted" style="margin:6px 0 0">加了照片会顺便盖上章。</p>')+
     (p.custom?'<div class="row" style="margin-top:18px"><button class="btn small" data-act="editp" style="flex:1">改一改</button><button class="btn small" data-act="delp" style="flex:1">删除这个地点</button></div>':'')+
     (ps.length?'<span class="credit">照片来自 Wikimedia Commons，作者与授权：'+ps.map(function(o,i){return '<a href="https://commons.wikimedia.org/wiki/File:'+encodeURIComponent(o.file)+'" target="_blank" rel="noopener">第 '+(i+1)+' 张</a>'}).join('、')+'</span>':'');
@@ -1239,6 +1293,9 @@ document.addEventListener('click',function(e){
   else if(a==='gacha') gacha();
   else if(a==='sw') flyTop(v);
   else if(a==='undo'){var id=lastDecided.pop(); if(id){delete S.st[id]; save(); renderSwipe()} else toast('没有可以撤销的')}
+  else if(a==='eatall'){go('list'); listMode='eat'; renderList(); window.scrollTo(0,0)}
+  else if(a==='eatkind'){eatKind=v; renderEats()}
+  else if(a==='xeat'){xEat=!xEat; renderExplore()}
   else if(a==='filter'){filter=v; if(v==='tokyo'||v==='kamakura') xFit=true; renderList()}
   else if(a==='offline') saveOffline();
   else if(a==='addp') openForm(null,v);
