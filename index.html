@@ -322,6 +322,9 @@ input.line,textarea{font-size:16px}
 .xpin.e b{background:#fff}
 .xpin.e b .ic{width:17px;height:17px;margin:0}
 .xpin.e.v b{background:#9aa5b8}
+.nudge{margin-top:20px;padding-top:20px}
+.nudge b{display:block;font-family:var(--display);font-weight:400;font-size:19px}
+.nudge p{margin:4px 0 10px}
 .mapbox.big{height:min(62vh,540px);margin-top:12px}
 .xpin{background:none;border:0}
 .xpin b{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;border:2px solid #173A7A;background:#FFFCF3;color:#173A7A;font:700 14px/1 sans-serif;box-shadow:2px 2px 0 #173A7A}
@@ -398,6 +401,7 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
     <div class="chips" id="status"></div>
     <div class="chips rangerow" id="range"></div>
     <div id="zoneBanner"></div>
+    <div id="recapNudge"></div>
     <h2 class="sec">现在想怎么过</h2>
     <div class="scroller" id="moods"></div>
     <div style="height:18px"></div>
@@ -561,11 +565,11 @@ nav button.on svg{fill:var(--mustard);stroke:#fff}
   </section>
 
   <section class="view" id="v-book">
+    <h2 class="sec">旅行结算图</h2>
+    <div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">把这趟散步做成一张图</b><p class="muted" style="margin:4px 0 10px">用你拍的照片和盖的章拼成海报，可以直接发 Instagram。回来之后生成最完整，路上也能随时看看。</p><div class="row"><button class="btn coral" data-act="recap">生成结算图</button></div></div>
     <h2 class="sec">集章册</h2>
     <div id="bookTop"></div>
     <div class="book" id="book" style="margin-top:14px"></div>
-    <h2 class="sec">旅行结算图</h2>
-    <div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">把这趟散步做成一张图</b><p class="muted" style="margin:4px 0 10px">用你拍的照片和盖的章拼成海报，可以直接发 Instagram。回来之后生成最完整，路上也能随时看看。</p><div class="row"><button class="btn coral" data-act="recap">生成结算图</button></div></div>
     <h2 class="sec">离线照片</h2>
     <div id="offline"></div>
     <h2 class="sec">做过的小事</h2>
@@ -708,6 +712,10 @@ function renderStatus(){
   $('#range').innerHTML=loc()?'<span class="rlab">只推荐附近</span>'+RANGES.map(function(k){return '<button class="chip fchip'+(rg===k?' on':'')+'" data-act="range" data-v="'+k+'">'+(k?k+' km 内':'不限')+'</button>'}).join(''):'';
   $('#zoneBanner').innerHTML=zone()==='kamakura'?'<div class="banner">'+ico('water')+'今天是镰仓日，推荐都换成了镰仓和江之岛。</div>':'';
 }
+// 最后一天和旅行结束后，首页直接放结算图入口，不用滑到集章页最下面
+function renderNudge(){var el=$('#recapNudge'); if(!el) return; var d=dayNo(); if(!TRIP_START||d<TRIP_DAYS){el.innerHTML=''; return}
+  var n=Object.keys(S.stamps).length, k=SHOTS.length;
+  el.innerHTML='<div class="card nudge"><span class="tape">'+(d===TRIP_DAYS?'最后一天':'旅行结束啦')+'</span><b>把这趟做成一张结算图</b><p class="muted">'+(n||k?'已经有 '+n+' 个章、'+k+' 张照片，':'')+'拼成一张海报，可以直接发 Instagram。</p><div class="row"><button class="btn coral" data-act="recap">生成结算图</button></div></div>'}
 function renderMoods(){
   $('#moods').innerHTML=Object.keys(TAGS).map(function(k){return '<button class="mood'+(S.mood===k?' on':'')+'" data-act="mood" data-v="'+k+'"><b>'+ico(k)+'</b><span>'+TAGS[k][1]+'</span></button>'}).join('');
 }
@@ -741,7 +749,7 @@ function renderProgress(){
   var n=Object.keys(S.stamps).length, q=Object.keys(S.quests).length;
   $('#progress').innerHTML='<div class="card"><b style="font-family:var(--display);font-weight:400;font-size:18px">盖了 '+n+' 个章 · 做了 '+q+' 件小事</b><div class="prog"><i style="width:'+Math.min(100,Math.round(n/PLACES.filter(sight).length*100))+'%"></i></div><p class="muted" style="margin:8px 0 0">到了一个地方，在它的详情里按「盖章」。</p></div>';
 }
-function renderHome(){renderStatus();renderMoods();renderHero();renderQuest();renderProgress()}
+function renderHome(){renderStatus();renderNudge();renderMoods();renderHero();renderQuest();renderProgress()}
 
 /* ---------- 附近吃喝（跟景点分开） ---------- */
 var QUICK=window.EAT_QUICK||[['cafe','咖啡','cafe'],['food','吃饭','restaurant'],['bar','喝一杯','bar'],['sweet','甜点','dessert']], eatKind='all';
