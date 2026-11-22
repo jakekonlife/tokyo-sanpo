@@ -195,6 +195,7 @@ body.sheet-on .sheet{transform:none}
 .seg button{flex:1;padding:9px 4px;font-size:13px;font-weight:700;border-right:var(--line)}
 .seg button:last-child{border-right:0}
 .seg button.on{background:var(--navy);color:#fff}
+.seg.rcsty{margin-top:-6px}
 .close{position:sticky;top:0;float:right;z-index:5;width:38px;height:38px;border-radius:50%;border:var(--line);background:var(--white);font-size:18px;margin:0 0 -38px;box-shadow:2px 2px 0 var(--navy)}
 textarea{width:100%;font:inherit;color:inherit;border:var(--line);border-radius:14px;padding:10px 12px;background:var(--white);min-height:74px;resize:vertical;margin-top:10px}
 .credit{font-size:11px;opacity:.6;margin-top:14px;display:block}
@@ -1205,7 +1206,8 @@ function fullImg(id){return db().then(function(d){return new Promise(function(re
 function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId&&byId[openId]) openDetail(openId); sh.scrollTop=y}
 
 /* ---------- 旅行结算图 ---------- */
-var RC={fmt:'post',ids:null,line:null,seed:7,blob:null,url:null,adj:null}, rcTok=0;
+var RC_MAX=12, RC_STY=[['pola','拍立得'],['grid','照片墙'],['film','胶片'],['scrap','手帐']];
+var RC={fmt:'post',style:'pola',ids:null,line:null,seed:7,blob:null,url:null,adj:null}, rcTok=0;
 // 每张照片在结算图里的裁切：x、y 是想放在相框中间的那一点（0–1），z 是放大倍数。存在 S.crop 里，下次还在
 function cropOf(id){return (S.crop&&S.crop[id])||null}
 function setCrop(id,o){S.crop=S.crop||{}; S.crop[id]=Object.assign({x:.5,y:.45,z:1},S.crop[id]||{},o); save()}
@@ -1225,6 +1227,7 @@ function bindAdj(){
 function gotPlaces(){return PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t})}
 function defaultPicks(){var seen={}, a=[], rest=[]; SHOTS.slice().sort(function(x,y){return x.t-y.t}).forEach(function(x){ if(!seen[x.pid]||x.pid==='_free'){seen[x.pid]=1; a.push(x.id)} else rest.push(x.id)}); return a.concat(rest).slice(0,6)}
 function openRecap(){
+  if(S.rcStyle) RC.style=S.rcStyle;
   if(!RC.ids) RC.ids=defaultPicks(); RC.ids=RC.ids.filter(function(id){return SHOTS.some(function(x){return x.id===id})});
   if(RC.line==null){var n=gotPlaces().map(function(p){return (S.stamps[p.id].note||'').trim()}).filter(function(t){return t&&t.length<=20})[0]; RC.line=n||'不赶路，走到哪算哪'}
   openId='recap'; recapSheet(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
@@ -1235,9 +1238,10 @@ function recapSheet(){
     '<div class="recap-prev"><img id="recapImg" alt="旅行结算图"'+(RC.url?' src="'+RC.url+'"':' hidden')+'><span class="muted" id="recapMsg">正在画…</span></div>'+
     '<p class="muted" style="margin:6px 0 0;text-align:center">长按图片也可以直接存到相册。</p>'+adjHTML()+
     '<div class="seg"><button data-act="rcfmt" data-v="post" class="'+(RC.fmt==='post'?'on':'')+'">帖子 4:5</button><button data-act="rcfmt" data-v="story" class="'+(RC.fmt==='story'?'on':'')+'">限时动态 9:16</button></div>'+
+    '<div class="seg rcsty" role="group" aria-label="排版">'+RC_STY.map(function(o){return '<button data-act="rcsty" data-v="'+o[0]+'" class="'+(RC.style===o[0]?'on':'')+'">'+o[1]+'</button>'}).join('')+'</div>'+
     '<div class="row"><button class="btn" data-act="rcshuffle">换个排法</button><button class="btn primary" data-act="rcshare" style="flex:1.4">保存 / 分享</button></div>'+
     '<h4 class="mine">图上的一句话</h4><input class="line" id="rcLine" maxlength="18" placeholder="留空就不放" aria-label="图上的一句话">'+
-    '<h4 class="mine">放哪些照片（点一下选，最多 6 张）</h4>'+(RC.ids.length?'<p class="muted" style="margin:-4px 0 8px">选上的照片按右下角「调」，可以挪位置、放大、换顺序。</p>':'')+'<div class="shots">'+all.map(function(x){var k=RC.ids.indexOf(x.id); return '<button class="shot pick'+(k>=0?' on':'')+(RC.adj===x.id?' adj-on':'')+'" data-act="rcpick" data-id="'+x.id+'" aria-pressed="'+(k>=0)+'"><img src="'+x.thumb+'" alt="我拍的照片">'+(k>=0?'<i>'+(k+1)+'</i><span class="adj" data-act="rcadj" data-id="'+x.id+'" role="button" aria-label="调整这张照片">调</span>':'')+'</button>'}).join('')+addTile('_free')+'</div>'+
+    '<h4 class="mine">放哪些照片（点一下选，已选 '+RC.ids.length+' / '+RC_MAX+'）</h4>'+(RC.ids.length?'<p class="muted" style="margin:-4px 0 8px">选上的照片按右下角「调」，可以挪位置、放大、换顺序。</p>':'')+'<div class="shots">'+all.map(function(x){var k=RC.ids.indexOf(x.id); return '<button class="shot pick'+(k>=0?' on':'')+(RC.adj===x.id?' adj-on':'')+'" data-act="rcpick" data-id="'+x.id+'" aria-pressed="'+(k>=0)+'"><img src="'+x.thumb+'" alt="我拍的照片">'+(k>=0?'<i>'+(k+1)+'</i><span class="adj" data-act="rcadj" data-id="'+x.id+'" role="button" aria-label="调整这张照片">调</span>':'')+'</button>'}).join('')+addTile('_free')+'</div>'+
     '<p class="muted" style="margin:8px 0 0">'+(all.length?'这里加的照片不属于某个地点，只用在结算图里。':'还没有照片：在这里加，或者去每个地点的详情里加。没有照片时会用你盖的章来排版。')+'</p>';
   var li=$('#rcLine'); li.value=RC.line; li.addEventListener('input',function(){RC.line=li.value; clearTimeout(recapSheet.t); recapSheet.t=setTimeout(paintRecap,450)});
   bindAdj(); paintRecap();
@@ -1250,12 +1254,12 @@ function paintRecap(){
   var fonts=document.fonts&&document.fonts.load?Promise.all([document.fonts.load('400 40px "ZCOOL KuaiLe"',txt),document.fonts.load('700 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 24px "Noto Sans SC"',txt)]).catch(function(){}):Promise.resolve();
   Promise.all([Promise.all(chosen.map(function(x){return fullImg(x.id).then(function(im){return {im:im,pid:x.pid,id:x.id}},function(){return null})})),fonts]).then(function(r){
     var items=r[0].filter(Boolean); if(tok!==rcTok){items.forEach(function(o){URL.revokeObjectURL(o.im._u)}); return}
-    var c=drawRecap(RC.fmt,items,got,RC.line.trim(),RC.seed); items.forEach(function(o){URL.revokeObjectURL(o.im._u)});
+    var c=drawRecap(RC.fmt,items,got,RC.line.trim(),RC.seed,RC.style); items.forEach(function(o){URL.revokeObjectURL(o.im._u)});
     c.toBlob(function(b){ if(tok!==rcTok||!b) return; RC.blob=b; if(RC.url) URL.revokeObjectURL(RC.url); RC.url=URL.createObjectURL(b);
       var im=$('#recapImg'), m=$('#recapMsg'); if(im){im.src=RC.url; im.hidden=false} if(m) m.textContent=''},'image/jpeg',.93);
   }).catch(function(){var m=$('#recapMsg'); if(m) m.textContent='没画出来，再点一次「换个排法」试试。'});
 }
-function drawRecap(fmt,items,got,line,seed){
+function drawRecap(fmt,items,got,line,seed,style){
   var NAVY='#173A7A',MUST='#E9B93E',BLUE='#2F6FD0',SKY='#8CC3F0',CORAL='#E9574D',CREAM='#FFFCF3';
   var story=fmt==='story', Wd=1080, Hd=story?1920:1350, c=document.createElement('canvas'); c.width=Wd; c.height=Hd;
   var x=c.getContext('2d'), R=rng(seed*7919+items.length), DISP='"ZCOOL KuaiLe","PingFang SC",sans-serif', LAT='Fredoka,"ZCOOL KuaiLe",sans-serif', BODY='"Noto Sans SC","PingFang SC",sans-serif';
@@ -1270,17 +1274,67 @@ function drawRecap(fmt,items,got,line,seed){
     x.textAlign='center'; x.textBaseline='alphabetic'; x.font='400 '+fs+'px '+DISP; lines.forEach(function(t,i){x.fillText(t,0,(lines.length>1?44+i*19:52)-50)});
     x.font='500 9px '+LAT; x.fillText(p.zone==='kamakura'?'KAMAKURA':'TOKYO',0,-26); x.font='500 11px '+LAT; x.fillText(st.d,0,30); x.restore();
   }
-  function polaroid(o,cx,cy,cw,ch,ang){
-    var im=o.im, cap=byId[o.pid]?shortName(byId[o.pid]):'', m=18, w=cw-m*2, h=ch-m*2, pad=Math.max(12,Math.min(20,w*.045)), capH=cap?Math.max(44,Math.min(66,h*.14)):pad;
+  // 把一张照片铺满 (ix,iy,iw,ih)。调过的照片：按放大倍数裁小一点，再让选的那一点尽量落在相框中间（不会裁到照片外面）
+  function photo(o,ix,iy,iw,ih){
+    var im=o.im, nw=im.naturalWidth, nh=im.naturalHeight, sc=Math.max(iw/nw,ih/nh), sw=iw/sc, sh=ih/sc, sx=(nw-sw)/2, sy=(nh-sh)*.45, cr=cropOf(o.id);
+    if(cr){var z=Math.max(1,Math.min(2.5,cr.z||1)); sw/=z; sh/=z; sx=Math.max(0,Math.min(nw-sw,cr.x*nw-sw/2)); sy=Math.max(0,Math.min(nh-sh,cr.y*nh-sh/2))}
+    x.drawImage(im,sx,sy,sw,sh,ix,iy,iw,ih);
+  }
+  function polaroid(o,cx,cy,cw,ch,ang,m){
+    if(m==null) m=18; var cap=byId[o.pid]?shortName(byId[o.pid]):'', w=cw-m*2, h=ch-m*2, pad=Math.max(10,Math.min(20,w*.045)); if(w<170) cap=''; var capH=cap?Math.max(40,Math.min(66,h*.14)):pad;
     x.save(); x.translate(cx+cw/2,cy+ch/2); x.rotate(ang);
     x.fillStyle=NAVY; x.fillRect(-w/2+9,-h/2+9,w,h); x.fillStyle='#fff'; x.fillRect(-w/2,-h/2,w,h); x.strokeStyle=NAVY; x.lineWidth=4; x.strokeRect(-w/2,-h/2,w,h);
-    var iw=w-pad*2, ih=h-pad-capH, ix=-w/2+pad, iy=-h/2+pad, sc=Math.max(iw/im.naturalWidth,ih/im.naturalHeight), sw=iw/sc, sh=ih/sc;
-    var nw=im.naturalWidth, nh=im.naturalHeight, cr=cropOf(o.id), sx=(nw-sw)/2, sy=(nh-sh)*.45;
-    // 调过的照片：按放大倍数裁小一点，再让选的那一点尽量落在相框中间（不会裁到照片外面）
-    if(cr){var z=Math.max(1,Math.min(2.5,cr.z||1)); sw/=z; sh/=z; sx=Math.max(0,Math.min(nw-sw,cr.x*nw-sw/2)); sy=Math.max(0,Math.min(nh-sh,cr.y*nh-sh/2))}
-    x.drawImage(im,sx,sy,sw,sh,ix,iy,iw,ih); x.lineWidth=3; x.strokeRect(ix,iy,iw,ih);
+    var iw=w-pad*2, ih=h-pad-capH, ix=-w/2+pad, iy=-h/2+pad;
+    photo(o,ix,iy,iw,ih); x.lineWidth=3; x.strokeRect(ix,iy,iw,ih);
     if(cap){x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; var fz=Math.round(capH*.52); x.font='400 '+fz+'px '+DISP; while(x.measureText(cap).width>iw&&fz>16){fz-=2; x.font='400 '+fz+'px '+DISP} x.fillText(cap,0,h/2-capH/2+1); x.textBaseline='alphabetic'}
     x.restore();
+  }
+  function sum(a,b){return a+b}
+  // 胶带（手帐风）
+  function tape(cx,cy,w,ang,col){var h=w*.32; x.save(); x.translate(cx,cy); x.rotate(ang); x.globalAlpha=.85; x.fillStyle=col; x.beginPath(); x.moveTo(-w/2,-h/2); x.lineTo(w/2,-h/2);
+    for(var t=1;t<=5;t++) x.lineTo(w/2+(t%2?-5:0),-h/2+h*t/5); x.lineTo(-w/2,h/2); for(t=4;t>=0;t--) x.lineTo(-w/2+(t%2?5:0),-h/2+h*t/5); x.closePath(); x.fill(); x.restore()}
+  // 拍立得：一排排摆好，最多 12 张（多了就小一点、窄的不写地名）
+  function polaWall(){
+    var n=items.length, tall=Hc/Wc>1.05, rows={1:[1],2:tall?[1,1]:[2],3:[1,2],4:[2,2],5:[2,3],6:tall?[2,2,2]:[3,3],7:[3,4],8:[4,4],9:[3,3,3],10:[3,4,3],11:[4,3,4],12:[4,4,4]}[n];
+    var wts=rows.map(function(k){return rows.length>1&&k===1?1.5:(k===2&&rows.indexOf(3)>=0?1.25:1)}), tw=wts.reduce(sum,0), cy=Y, idx=0, m=n>6?12:18;
+    rows.forEach(function(k,ri){var rh=Hc*wts[ri]/tw, cw=Wc/k; for(var j=0;j<k;j++){polaroid(items[idx++],X+cw*j,cy,cw,rh,(R()-.5)*(n===1?.035:.075),m)} cy+=rh});
+    if(!story&&got.length&&n<=6){var last=got.slice(-2); stamp(last[last.length-1],X+Wc-78,Y+Hc-74,76,-.22+(R()-.5)*.2,true); if(last.length>1&&n>1) stamp(last[0],X+80,Y+78,68,.2+(R()-.5)*.2,true)}
+  }
+  // 照片墙：白板上整齐拼起来，第一张最大
+  function gridWall(){
+    var n=items.length, rows={1:[1],2:Hc/Wc>1.05?[1,1]:[2],3:[1,2],4:[1,3],5:[2,3],6:[2,4],7:[1,3,3],8:[2,3,3],9:[3,3,3],10:[2,4,4],11:[3,4,4],12:[4,4,4]}[n];
+    var P=16, g=10, wts=rows.map(function(k){return Math.pow(1/k,.75)}), tw=wts.reduce(sum,0), avail=Hc-P*2-g*(rows.length-1), cy=Y+P, idx=0;
+    x.fillStyle=NAVY; x.fillRect(X+10,Y+10,Wc,Hc); x.fillStyle='#fff'; x.fillRect(X,Y,Wc,Hc); x.strokeStyle=NAVY; x.lineWidth=4; x.strokeRect(X,Y,Wc,Hc);
+    rows.forEach(function(k,ri){var rh=avail*wts[ri]/tw, cw=(Wc-P*2-g*(k-1))/k;
+      for(var j=0;j<k;j++){var fx=X+P+j*(cw+g); photo(items[idx++],fx,cy,cw,rh); x.strokeStyle=NAVY; x.lineWidth=2.5; x.strokeRect(fx,cy,cw,rh)} cy+=rh+g});
+    if(!story&&got.length) stamp(got[got.length-1],X+Wc-62,Y+Hc-58,66,-.22+(R()-.5)*.2,true);
+  }
+  // 胶片：一条条底片，带齿孔和格数
+  function filmStrips(){
+    var n=items.length, per=n<=3?n:n<=8?Math.ceil(n/2):Math.ceil(n/3), strips=Math.ceil(n/per), g=24, sh=(Hc-g*(strips-1))/strips, idx=0, no=1;
+    var hole=Math.max(8,Math.min(16,sh*.06)), band=hole*2.6, fg=hole*1.2, fw=(Wc-fg*(per+1))/per, fh=sh-band*2;
+    for(var s2=0;s2<strips;s2++){
+      var k=Math.min(per,n-idx), w=fg*(k+1)+fw*k, h=sh;
+      x.save(); x.translate(X+Wc/2,Y+s2*(sh+g)+sh/2); x.rotate((R()-.5)*.04);
+      x.fillStyle=NAVY; x.fillRect(-w/2+8,-h/2+8,w,h); x.fillStyle='#10295A'; x.fillRect(-w/2,-h/2,w,h);
+      x.fillStyle=CREAM; for(var hx=-w/2+hole*.8; hx<w/2-hole*1.6; hx+=hole*2.2){x.fillRect(hx,-h/2+band/2-hole*.45,hole*1.1,hole*.9); x.fillRect(hx,h/2-band/2-hole*.45,hole*1.1,hole*.9)}
+      for(var j=0;j<k;j++){var fx=-w/2+fg+j*(fw+fg); photo(items[idx++],fx,-h/2+band,fw,fh);
+        x.fillStyle=MUST; x.textAlign='left'; x.textBaseline='middle'; x.font='700 '+Math.round(hole*1.15)+'px '+LAT; x.fillText('▸ '+(no++)+'A',fx+2,h/2-band*.2)}
+      x.textBaseline='alphabetic'; x.restore();
+    }
+    if(!story&&got.length) stamp(got[got.length-1],X+Wc-60,Y+Hc-50,64,-.22+(R()-.5)*.2,true);
+  }
+  // 手帐：拍立得随手贴上去，歪一点、叠一点，上面贴胶带
+  function scrapbook(){
+    var n=items.length, cols=Math.max(1,Math.round(Math.sqrt(n*Wc/Hc))), rws=Math.ceil(n/cols), cw=Wc/cols, ch=Hc/rws, grow=n===1?1:1.2, m=n>6?10:16, cols3=[MUST,CORAL,SKY];
+    for(var i=0;i<n;i++){
+      var r=Math.floor(i/cols), inRow=Math.min(cols,n-r*cols), off=(Wc-inRow*cw)/2, w=cw*grow, h=ch*grow, ang=(R()-.5)*(n===1?.08:.34);
+      var cx=X+off+cw*(i%cols)-(w-cw)/2+(R()-.5)*cw*.14, cy=Y+ch*r-(h-ch)/2+(R()-.5)*ch*.14;
+      cx=Math.max(X-14,Math.min(X+Wc-w+14,cx)); cy=Math.max(Y-12,Math.min(Y+Hc-h+12,cy));
+      polaroid(items[i],cx,cy,w,h,ang,m);
+      var hi=(h-m*2)/2, tw2=Math.min(130,(w-m*2)*.42); tape(cx+w/2+hi*Math.sin(ang),cy+h/2-hi*Math.cos(ang),tw2,ang+(R()-.5)*.35,cols3[i%3]);
+    }
+    if(!story&&got.length){var sr=Math.min(70,Math.min(cw,ch)*.3); stamp(got[got.length-1],X+Wc-sr-6,Y+Hc-sr-4,sr,-.22+(R()-.5)*.2,true); if(got.length>1&&n>2) stamp(got[0],X+sr+6,Y+Hc-sr-4,sr*.9,.2+(R()-.5)*.2,true)}
   }
   // 底色与圆点
   x.fillStyle=MUST; x.fillRect(0,0,Wd,Hd); x.fillStyle='rgba(23,58,122,.13)';
@@ -1310,10 +1364,8 @@ function drawRecap(fmt,items,got,line,seed){
   // 主体
   var X=ix+22, Y=top, Wc=iw-44, Hc=bottom-top;
   if(items.length){
-    var n=items.length, tall=Hc/Wc>1.05, rows={1:[1],2:tall?[1,1]:[2],3:[1,2],4:[2,2],5:[2,3],6:tall?[2,2,2]:[3,3]}[n];
-    var wts=rows.map(function(k){return rows.length>1&&k===1?1.5:(k===2&&rows.indexOf(3)>=0?1.25:1)}), tw=wts.reduce(function(a,b){return a+b},0), cy=Y, idx=0;
-    rows.forEach(function(k,ri){var rh=Hc*wts[ri]/tw, cw=Wc/k; for(var j=0;j<k;j++){polaroid(items[idx++],X+cw*j,cy,cw,rh,(R()-.5)*(n===1?.035:.075))} cy+=rh});
-    if(!story&&got.length){var last=got.slice(-2); stamp(last[last.length-1],X+Wc-78,Y+Hc-74,76,-.22+(R()-.5)*.2,true); if(last.length>1&&n>1) stamp(last[0],X+80,Y+78,68,.2+(R()-.5)*.2,true)}
+    items=items.slice(0,RC_MAX);
+    if(style==='grid') gridWall(); else if(style==='film') filmStrips(); else if(style==='scrap') scrapbook(); else polaWall();
   } else if(got.length){
     var show=got.slice(-12), cols=show.length<=4?2:show.length<=9?3:4, rws=Math.ceil(show.length/cols), cw2=Wc/cols, ch2=Hc/rws, r2=Math.min(cw2,ch2)/2-16;
     show.forEach(function(p,i){var rowN=Math.floor(i/cols), inRow=Math.min(cols,show.length-rowN*cols), off=(Wc-inRow*cw2)/2; stamp(p,X+off+cw2*(i%cols+.5),Y+ch2*(rowN+.5),r2,(hash(p.id)%25-12)/57+(R()-.5)*.1)});
@@ -1400,9 +1452,10 @@ document.addEventListener('click',function(e){
     if(pts.length>1) MAP.fitBounds(pts,{padding:[34,34],maxZoom:16}); else if(pts.length) MAP.setView(pts[0],15) }
   else if(a==='recap') openRecap();
   else if(a==='rcfmt'){RC.fmt=v; reopen()}
+  else if(a==='rcsty'){RC.style=v; S.rcStyle=v; save(); reopen()}
   else if(a==='rcshuffle'){RC.seed++; paintRecap()}
   else if(a==='rcshare') shareRecap();
-  else if(a==='rcpick'){var sid=+el.dataset.id, k=RC.ids.indexOf(sid); if(k>=0){RC.ids.splice(k,1); if(RC.adj===sid) RC.adj=null} else if(RC.ids.length>=6){toast('最多放 6 张');return} else RC.ids.push(sid); reopen()}
+  else if(a==='rcpick'){var sid=+el.dataset.id, k=RC.ids.indexOf(sid); if(k>=0){RC.ids.splice(k,1); if(RC.adj===sid) RC.adj=null} else if(RC.ids.length>=RC_MAX){toast('最多放 '+RC_MAX+' 张');return} else RC.ids.push(sid); reopen()}
   else if(a==='rcadj'){RC.adj=+el.dataset.id; reopen(); $('#sheet').scrollTop=0}
   else if(a==='rcdone'){RC.adj=null; reopen()}
   else if(a==='rcreset'){ if(S.crop) delete S.crop[RC.adj]; save(); reopen()}
