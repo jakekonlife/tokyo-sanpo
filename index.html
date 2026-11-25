@@ -1206,7 +1206,7 @@ function fullImg(id){return db().then(function(d){return new Promise(function(re
 function reopen(){var sh=$('#sheet'), y=sh.scrollTop; if(openId==='recap') recapSheet(); else if(openId&&byId[openId]) openDetail(openId); sh.scrollTop=y}
 
 /* ---------- 旅行结算图 ---------- */
-var RC_MAX=12, RC_STY=[['pola','拍立得'],['grid','照片墙'],['film','胶片'],['scrap','手帐']];
+var RC_MAX=12, RC_STY=[['pola','海报'],['book','手帐本'],['cork','软木板'],['line','晾照片']];
 var RC={fmt:'post',style:'pola',ids:null,line:null,seed:7,blob:null,url:null,adj:null}, rcTok=0;
 // 每张照片在结算图里的裁切：x、y 是想放在相框中间的那一点（0–1），z 是放大倍数。存在 S.crop 里，下次还在
 function cropOf(id){return (S.crop&&S.crop[id])||null}
@@ -1227,7 +1227,7 @@ function bindAdj(){
 function gotPlaces(){return PLACES.filter(function(p){return S.stamps[p.id]}).sort(function(a,b){return S.stamps[a.id].t-S.stamps[b.id].t})}
 function defaultPicks(){var seen={}, a=[], rest=[]; SHOTS.slice().sort(function(x,y){return x.t-y.t}).forEach(function(x){ if(!seen[x.pid]||x.pid==='_free'){seen[x.pid]=1; a.push(x.id)} else rest.push(x.id)}); return a.concat(rest).slice(0,6)}
 function openRecap(){
-  if(S.rcStyle) RC.style=S.rcStyle;
+  if(S.rcStyle) RC.style=S.rcStyle; if(!RC_STY.some(function(o){return o[0]===RC.style})) RC.style='pola';
   if(!RC.ids) RC.ids=defaultPicks(); RC.ids=RC.ids.filter(function(id){return SHOTS.some(function(x){return x.id===id})});
   if(RC.line==null){var n=gotPlaces().map(function(p){return (S.stamps[p.id].note||'').trim()}).filter(function(t){return t&&t.length<=20})[0]; RC.line=n||'不赶路，走到哪算哪'}
   openId='recap'; recapSheet(); $('#sheet').scrollTop=0; document.body.classList.add('sheet-on');
@@ -1250,7 +1250,7 @@ function rng(a){return function(){a|=0; a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>
 function paintRecap(){
   var tok=++rcTok, chosen=RC.ids.map(function(id){return SHOTS.filter(function(x){return x.id===id})[0]}).filter(Boolean), got=gotPlaces();
   var msg=$('#recapMsg'); if(msg) msg.textContent='正在画…';
-  var txt='东京散步签个章张照片件小事街区还没有先去走天夜「」'+RC.line+got.map(shortName).join('')+chosen.map(function(x){return byId[x.pid]?shortName(byId[x.pid]):''}).join('');
+  var txt='东京散步签个章张照片件小事街区还没有先去走天夜「」这趟的回忆'+RC.line+got.map(shortName).join('')+chosen.map(function(x){return byId[x.pid]?shortName(byId[x.pid]):''}).join('');
   var fonts=document.fonts&&document.fonts.load?Promise.all([document.fonts.load('400 40px "ZCOOL KuaiLe"',txt),document.fonts.load('700 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 40px Fredoka','TOKYO 0123456789'),document.fonts.load('500 24px "Noto Sans SC"',txt)]).catch(function(){}):Promise.resolve();
   Promise.all([Promise.all(chosen.map(function(x){return fullImg(x.id).then(function(im){return {im:im,pid:x.pid,id:x.id}},function(){return null})})),fonts]).then(function(r){
     var items=r[0].filter(Boolean); if(tok!==rcTok){items.forEach(function(o){URL.revokeObjectURL(o.im._u)}); return}
@@ -1289,10 +1289,150 @@ function drawRecap(fmt,items,got,line,seed,style){
     if(cap){x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; var fz=Math.round(capH*.52); x.font='400 '+fz+'px '+DISP; while(x.measureText(cap).width>iw&&fz>16){fz-=2; x.font='400 '+fz+'px '+DISP} x.fillText(cap,0,h/2-capH/2+1); x.textBaseline='alphabetic'}
     x.restore();
   }
+  var H1='TOKYO', TTL='东京散步签', RANGE='2026.11.16 — 11.22', H1SIZE=108, H1GAP=26, THEME=MUST;
   function sum(a,b){return a+b}
-  // 胶带（手帐风）
+  /* ===== 场景用的小道具 ===== */
+  function rr(x0,y0,w,h,r){x.beginPath(); x.moveTo(x0+r,y0); x.arcTo(x0+w,y0,x0+w,y0+h,r); x.arcTo(x0+w,y0+h,x0,y0+h,r); x.arcTo(x0,y0+h,x0,y0,r); x.arcTo(x0,y0,x0+w,y0,r); x.closePath()}
+  function shadow(a,b,dy){x.shadowColor='rgba(30,18,8,'+a+')'; x.shadowBlur=b; x.shadowOffsetX=0; x.shadowOffsetY=dy}
+  function noShadow(){x.shadowColor='transparent'; x.shadowBlur=0; x.shadowOffsetX=0; x.shadowOffsetY=0}
+  function fitFont(t,max,size,wt,fam){x.font=wt+' '+size+'px '+fam; while(x.measureText(t).width>max&&size>14){size-=2; x.font=wt+' '+size+'px '+fam} return size}
+  function wspan(t,gap){return [].reduce.call(t,function(a,ch){return a+x.measureText(ch).width},0)+gap*(t.length-1)}
+  function statsArr(){var areas={}; got.forEach(function(p){areas[p.area]=1}); return [[got.length,'个章',CORAL],[SHOTS.length,'张照片',BLUE],[Object.keys(S.quests).length,'件小事',NAVY],[Object.keys(areas).length,'个街区',CORAL]]}
+  function stats2x2(w,h){var cw=w/2, ch=h/2; statsArr().forEach(function(s,i){var cx=-w/2+cw*(i%2+.5), cy=-h/2+ch*(Math.floor(i/2)+.5); x.textAlign='center'; x.fillStyle=s[2]; x.font='700 '+Math.round(ch*.44)+'px '+LAT; x.fillText(s[0],cx,cy+ch*.1); x.fillStyle=NAVY; x.font='500 '+Math.round(ch*.17)+'px '+BODY; x.fillText(s[1],cx,cy+ch*.36)})}
+  // 把 n 张照片分进一块区域：挑格子宽高比最接近 asp 的行列数，最后一行置中
+  function cells(n,rx,ry,rw,rh,asp){var b=null; for(var c2=1;c2<=n;c2++){var r2=Math.ceil(n/c2), cw=rw/c2, ch=rh/r2, sc=Math.abs(Math.log(cw/ch/asp))+(c2*r2-n)*.12; if(!b||sc<b.s) b={s:sc,c:c2,r:r2,w:cw,h:ch}}
+    var out=[]; for(var i=0;i<n;i++){var ri=Math.floor(i/b.c), inRow=Math.min(b.c,n-ri*b.c), off=(rw-inRow*b.w)/2; out.push({x:rx+off+b.w*(i%b.c),y:ry+b.h*ri,w:b.w,h:b.h,row:ri,rows:b.r})} return out}
+  function capOf(o){return byId[o.pid]?shortName(byId[o.pid]):''}
+  // 冲印照片：白边 + 柔和阴影，横竖跟着照片本身。after(w,h) 在同一个旋转坐标里画胶带、相角
+  function psize(o,maxW,maxH,cap){var im=o.im, a=Math.max(.75,Math.min(1.34,im.naturalWidth/im.naturalHeight)), b=Math.max(8,Math.min(20,Math.min(maxW,maxH)*.05)), c=cap&&capOf(o)?Math.max(30,b*2.6):b;
+    var iw=Math.max(40,Math.min(maxW-2*b,(maxH-b-c)*a)), ih=iw/a; return {w:iw+2*b,h:ih+b+c,iw:iw,ih:ih,b:b,c:c,cap:c>b}}
+  function print(o,cx,cy,maxW,maxH,ang,opt){opt=opt||{}; var s=psize(o,maxW,maxH,opt.cap), w=s.w, h=s.h;
+    x.save(); x.translate(cx,cy); x.rotate(ang); shadow(opt.sa||.32,opt.blur||16,opt.dy||7); x.fillStyle=opt.paper||'#fff'; x.fillRect(-w/2,-h/2,w,h); noShadow();
+    photo(o,-w/2+s.b,-h/2+s.b,s.iw,s.ih);
+    if(s.cap){var t=capOf(o); fitFont(t,s.iw,Math.round(s.c*.55),'400',DISP); x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; x.fillText(t,0,h/2-s.c/2+1); x.textBaseline='alphabetic'}
+    if(opt.after) opt.after(w,h); x.restore(); return s}
   function tape(cx,cy,w,ang,col){var h=w*.32; x.save(); x.translate(cx,cy); x.rotate(ang); x.globalAlpha=.85; x.fillStyle=col; x.beginPath(); x.moveTo(-w/2,-h/2); x.lineTo(w/2,-h/2);
     for(var t=1;t<=5;t++) x.lineTo(w/2+(t%2?-5:0),-h/2+h*t/5); x.lineTo(-w/2,h/2); for(t=4;t>=0;t--) x.lineTo(-w/2+(t%2?5:0),-h/2+h*t/5); x.closePath(); x.fill(); x.restore()}
+  function corners(w,h){var k=Math.min(30,w*.12); x.fillStyle=NAVY; [[-1,-1],[1,-1],[1,1],[-1,1]].forEach(function(s){var cx=s[0]*w/2, cy=s[1]*h/2; x.beginPath(); x.moveTo(cx,cy); x.lineTo(cx-s[0]*k,cy); x.lineTo(cx,cy-s[1]*k); x.closePath(); x.fill()})}
+  function pin(px,py,col){x.save(); x.fillStyle='rgba(0,0,0,.3)'; x.beginPath(); x.ellipse(px+5,py+8,12,8,0,0,7); x.fill(); x.fillStyle=col; x.beginPath(); x.arc(px,py,13,0,7); x.fill(); x.strokeStyle='rgba(0,0,0,.28)'; x.lineWidth=2; x.stroke(); x.fillStyle='rgba(255,255,255,.7)'; x.beginPath(); x.arc(px-4,py-4,4.5,0,7); x.fill(); x.restore()}
+  function peg(px,py,ang){x.save(); x.translate(px,py); x.rotate(ang); shadow(.4,6,3); x.fillStyle='#D8A866'; x.fillRect(-10,-28,9,58); x.fillRect(1,-28,9,58); noShadow(); x.strokeStyle='#94642F'; x.lineWidth=1.5; x.strokeRect(-10,-28,9,58); x.strokeRect(1,-28,9,58); x.fillStyle='#B4BCC6'; x.fillRect(-12,-8,24,7); x.restore()}
+  function note(x0,y0,w,h,ang,col,draw){x.save(); x.translate(x0+w/2,y0+h/2); x.rotate(ang); shadow(.32,14,6); x.fillStyle=col; x.fillRect(-w/2,-h/2,w,h); noShadow();
+    var g=x.createLinearGradient(0,h/2-46,0,h/2); g.addColorStop(0,'rgba(0,0,0,0)'); g.addColorStop(1,'rgba(0,0,0,.07)'); x.fillStyle=g; x.fillRect(-w/2,h/2-46,w,46); if(draw) draw(w,h); x.restore()}
+  function torn(x0,y0,w,h,ang,draw){x.save(); x.translate(x0+w/2,y0+h/2); x.rotate(ang); shadow(.3,10,5); x.fillStyle='#FFFDF6'; x.beginPath(); x.moveTo(-w/2,-h/2);
+    for(var tx=-w/2; tx<=w/2; tx+=14) x.lineTo(tx,-h/2+(R()*5)); x.lineTo(w/2,h/2); for(tx=w/2; tx>=-w/2; tx-=14) x.lineTo(tx,h/2-(R()*5)); x.closePath(); x.fill(); noShadow(); if(draw) draw(w,h); x.restore()}
+  function wood(x0,y0,w,h,base){x.fillStyle=base; x.fillRect(x0,y0,w,h); x.save(); x.beginPath(); x.rect(x0,y0,w,h); x.clip();
+    for(var gy=y0; gy<y0+h; gy+=6+R()*7){x.strokeStyle='rgba(70,38,12,'+(.05+R()*.13)+')'; x.lineWidth=1+R()*2.2; var ph=R()*6, f=60+R()*170, amp=1+R()*3; x.beginPath(); for(var gx=x0; gx<=x0+w+16; gx+=16){var yy=gy+Math.sin(gx/f+ph)*amp; gx===x0?x.moveTo(gx,yy):x.lineTo(gx,yy)} x.stroke()}
+    x.restore()}
+  function cork(x0,y0,w,h){x.fillStyle='#C99560'; x.fillRect(x0,y0,w,h); var cs=['rgba(150,95,45,.55)','rgba(228,184,124,.55)','rgba(120,70,30,.45)','rgba(242,208,152,.42)'];
+    for(var i=0,N=Math.round(w*h/140);i<N;i++){x.fillStyle=cs[i%4]; var s=1+R()*3.2; x.fillRect(x0+R()*w,y0+R()*h,s,s*(.6+R()*.8))}}
+  function pen(px,py,len,ang){x.save(); x.translate(px,py); x.rotate(ang); shadow(.42,10,7); x.fillStyle=BLUE; rr(0,-11,len*.8,22,10); x.fill(); noShadow();
+    x.fillStyle=NAVY; rr(len*.02,-12,len*.26,24,10); x.fill(); x.fillStyle='#E3E7EC'; x.fillRect(len*.07,-16,len*.18,5);
+    x.fillStyle='#D3D8DE'; x.beginPath(); x.moveTo(len*.8,-10); x.lineTo(len*.97,-2); x.lineTo(len*.97,2); x.lineTo(len*.8,10); x.closePath(); x.fill(); x.fillStyle=NAVY; x.beginPath(); x.arc(len*.975,0,2.6,0,7); x.fill(); x.restore()}
+  function washi(cx,cy,r,col,hole){x.save(); shadow(.38,12,6); x.fillStyle=col; x.beginPath(); x.arc(cx,cy,r,0,7); x.fill(); noShadow(); x.fillStyle='rgba(255,255,255,.3)';
+    for(var a=0;a<6.28;a+=.52){x.beginPath(); x.arc(cx+Math.cos(a)*r*.77,cy+Math.sin(a)*r*.77,r*.07,0,7); x.fill()} x.fillStyle='#EFE3CC'; x.beginPath(); x.arc(cx,cy,r*.56,0,7); x.fill(); x.fillStyle=hole; x.beginPath(); x.arc(cx,cy,r*.43,0,7); x.fill(); x.restore()}
+  // 没有照片时：章排在这块区域里（还没章就写一句）
+  function stampField(rx,ry,rw,rh,backed,ink){
+    if(!got.length){x.fillStyle=ink; x.textAlign='center'; x.font='400 46px '+DISP; x.fillText('还没有章',rx+rw/2,ry+rh/2-10); x.font='500 28px '+BODY; x.globalAlpha=.75; x.fillText('先去走走，回来再生成',rx+rw/2,ry+rh/2+44); x.globalAlpha=1; return}
+    var show=got.slice(-12), cs=cells(show.length,rx,ry,rw,rh,1); show.forEach(function(p,i){var c=cs[i]; stamp(p,c.x+c.w/2,c.y+c.h/2,Math.min(c.w,c.h)/2-14,(hash(p.id)%25-12)/57+(R()-.5)*.1,backed)})}
+
+  /* ===== 场景一：书桌上摊开的手帐本，照片贴在页面上，口袋里还夹着几张 ===== */
+  function sceneBook(){
+    wood(0,0,Wd,Hd,'#B9824F'); x.fillStyle='rgba(60,30,8,.22)'; for(var sy2=150+R()*80; sy2<Hd; sy2+=340) x.fillRect(0,sy2,Wd,3);
+    var bx=104, by=story?200:70, bw=Wd-bx-64, bh=Hd-by-(story?240:110), n=items.length;
+    if(story){washi(Wd-176,104,64,MUST,'#B9824F'); washi(Wd-318,80,40,SKY,'#B9824F')}
+    x.save(); shadow(.5,34,16); x.fillStyle=NAVY; rr(bx-34,by-18,bw+52,bh+36,20); x.fill(); x.restore();
+    for(var k=4;k>=1;k--){x.fillStyle=k%2?'#E7DCC4':'#F6EEDC'; x.fillRect(bx+k*2.5,by+k*2.5,bw,bh)}
+    x.fillStyle='#FFFBF1'; x.fillRect(bx,by,bw,bh);
+    x.fillStyle='rgba(23,58,122,.15)'; for(var gy=by+28; gy<by+bh-10; gy+=34) for(var gx=bx+70; gx<bx+bw-10; gx+=34){x.beginPath(); x.arc(gx,gy,2.1,0,7); x.fill()}
+    var rbx=bx+bw*.74; x.fillStyle=CORAL; x.beginPath(); x.moveTo(rbx,by+bh-120); x.lineTo(rbx+34,by+bh-120); x.lineTo(rbx+34,by+bh+80); x.lineTo(rbx+17,by+bh+62); x.lineTo(rbx,by+bh+80); x.closePath(); x.fill();
+    for(var ry=by+30; ry<by+bh-16; ry+=50){x.fillStyle='#4A3B2E'; x.beginPath(); x.arc(bx+24,ry,6.5,0,7); x.fill(); x.lineCap='round';
+      x.strokeStyle='#59606A'; x.lineWidth=8; x.beginPath(); x.moveTo(bx+24,ry); x.bezierCurveTo(bx+6,ry-20,bx-44,ry-16,bx-46,ry+4); x.stroke(); x.strokeStyle='#D7DCE3'; x.lineWidth=4; x.stroke(); x.lineCap='butt'}
+    var cx0=bx+66, cw0=bw-66-38, cy0=by+40;
+    // 抬头：荧光笔划过的城市名
+    var fs=fitFont(H1,cw0*.56,Math.round(H1SIZE*.9),'700',LAT), gap=H1GAP*.6, tw=wspan(H1,gap), hy=cy0+fs*.86;
+    x.fillStyle='rgba(233,185,62,.62)'; x.beginPath(); x.moveTo(cx0-10,hy-fs*.34); x.lineTo(cx0+tw+16,hy-fs*.44); x.lineTo(cx0+tw+12,hy+10); x.lineTo(cx0-6,hy+15); x.closePath(); x.fill();
+    x.fillStyle=NAVY; spaced(H1,cx0+tw/2,hy,gap);
+    x.textAlign='left'; x.font='400 40px '+DISP; x.fillStyle=BLUE; x.fillText(TTL,cx0,hy+58);
+    x.font='500 26px '+LAT; x.fillStyle=NAVY; x.globalAlpha=.75; x.fillText(RANGE,cx0,hy+98); x.globalAlpha=1;
+    var gs=got.slice(-2); if(gs.length) stamp(gs[gs.length-1],bx+bw-112,cy0+88,70,-.2+(R()-.5)*.2,false); if(gs.length>1) stamp(gs[0],bx+bw-236,cy0+150,50,.2+(R()-.5)*.2,false);
+    // 底部：口袋 + 便利贴
+    var fh=story?380:280, fy=by+bh-fh-24, sn=Math.min(290,fh-30), pkN=n>=4?2:n===3?1:0, main=items.slice(0,n-pkN), pk=items.slice(n-pkN);
+    var qH=0; if(line){x.textAlign='center'; x.fillStyle=NAVY; x.font='400 38px '+DISP; x.fillText('「'+line+'」',cx0+cw0/2,fy-6); qH=58}
+    var top=hy+136, bot=fy-qH-12;
+    if(main.length){var cs=cells(main.length,cx0,top,cw0,bot-top,.9); main.forEach(function(o,i){var c=cs[i], ang=(R()-.5)*(main.length===1?.05:.11), tc=[MUST,SKY,CORAL];
+      print(o,c.x+c.w/2+(R()-.5)*c.w*.05,c.y+c.h/2,c.w*.95,c.h*.95,ang,{cap:c.w>210,after:function(w,h){ if(i%2===0){var t2=Math.min(96,w*.3); tape(-w/2+12,-h/2+8,t2,-.62,tc[i%3]); tape(w/2-12,-h/2+8,t2,.62,tc[(i+1)%3])} else corners(w,h)}})})}
+    else if(!n) stampField(cx0,top,cw0,bot-top,false,NAVY);
+    var pw=cw0-sn-36, ph=fh*.6, px0=cx0, py0=fy+fh-ph;
+    if(pk.length){var mh=(fh-ph-10)/.58; pk.forEach(function(o,i){var mw=pw*(pk.length>1?.5:.66), cxp=px0+pw*(pk.length>1?(i?.7:.3):.5), s=psize(o,mw,mh,false); print(o,cxp,py0+s.h*.42-s.h/2+(i?10:0),mw,mh,(i?.08:-.07)+(R()-.5)*.04,{})})}
+    else {x.save(); x.translate(px0+pw*.5,py0+10); x.rotate(-.06); shadow(.25,10,4); x.fillStyle='#FFF4DA'; x.fillRect(-pw*.36,-96,pw*.72,140); noShadow();
+      x.strokeStyle=CORAL; x.setLineDash([6,6]); x.lineWidth=2; x.beginPath(); x.moveTo(pw*.18,-96); x.lineTo(pw*.18,44); x.stroke(); x.setLineDash([]);
+      x.fillStyle=NAVY; x.textAlign='center'; fitFont(H1,pw*.46,34,'700',LAT); x.fillText(H1,-pw*.09,-50); x.font='500 18px '+LAT; x.fillText('ADMIT ONE',-pw*.09,-22); x.restore()}
+    x.save(); shadow(.3,10,-3); x.fillStyle='#C8A06A'; x.beginPath(); x.moveTo(px0,py0); x.lineTo(px0+pw*.38,py0); x.quadraticCurveTo(px0+pw*.5,py0+38,px0+pw*.62,py0); x.lineTo(px0+pw,py0); x.lineTo(px0+pw,py0+ph); x.lineTo(px0,py0+ph); x.closePath(); x.fill(); x.restore();
+    x.strokeStyle='rgba(255,248,230,.8)'; x.setLineDash([7,6]); x.lineWidth=2.2; x.strokeRect(px0+12,py0+46,pw-24,ph-58); x.setLineDash([]);
+    x.fillStyle='#6E4A22'; x.textAlign='center'; x.font='400 30px '+DISP; x.fillText('这趟的回忆',px0+pw/2,py0+ph*.64); fitFont(H1+' · '+RANGE,pw-60,18,'500',LAT); x.fillText(H1+' · '+RANGE,px0+pw/2,py0+ph*.64+32);
+    note(cx0+cw0-sn,fy+(fh-sn)/2+6,sn,sn,.04,'#FFE380',function(w,h){tape(0,-h/2+2,w*.42,-.04,SKY); stats2x2(w*.9,h*.86)});
+    pen(bx+30,Hd-(story?130:46),400,-.05);
+    return c;
+  }
+
+  /* ===== 场景二：墙上的软木板，照片用图钉钉着，红线按时间串起来 ===== */
+  function sceneCork(){
+    x.fillStyle=THEME; x.fillRect(0,0,Wd,Hd); x.fillStyle='rgba(23,58,122,.09)'; for(var dy=14;dy<Hd;dy+=28) for(var dx=14;dx<Wd;dx+=28){x.beginPath(); x.arc(dx,dy,2.4,0,7); x.fill()}
+    var fx=36, fy=story?220:36, fw=Wd-72, fh=Hd-fy-(story?170:36), n=items.length, pins=[], pc=[CORAL,BLUE,MUST,'#3FA37A'];
+    if(story){x.strokeStyle='#5B3D22'; x.lineWidth=4; x.beginPath(); x.moveTo(fx+160,fy+14); x.lineTo(Wd/2,96); x.lineTo(fx+fw-160,fy+14); x.stroke(); x.fillStyle='#8A9099'; x.beginPath(); x.arc(Wd/2,96,11,0,7); x.fill(); x.fillStyle='rgba(255,255,255,.7)'; x.beginPath(); x.arc(Wd/2-3,93,3.5,0,7); x.fill()}
+    x.save(); shadow(.45,30,14); x.fillStyle='#8E5E30'; x.fillRect(fx,fy,fw,fh); x.restore(); wood(fx,fy,fw,fh,'#9C6A3A');
+    var t=28, ix=fx+t, iy=fy+t, iw=fw-2*t, ih=fh-2*t; cork(ix,iy,iw,ih);
+    x.strokeStyle='rgba(0,0,0,.3)'; x.lineWidth=6; x.strokeRect(ix+3,iy+3,iw-6,ih-6); x.strokeStyle='rgba(255,228,186,.35)'; x.lineWidth=2; x.strokeRect(fx+3,fy+3,fw-6,fh-6);
+    // 索引卡：城市 + 日期
+    var cw=Math.min(600,iw*.62), ch=story?250:226, cX=ix+30, cY=iy+28;
+    note(cX,cY,cw,ch,-.025,'#FFFFFF',function(w,h){x.strokeStyle='rgba(233,87,77,.5)'; x.lineWidth=2; x.beginPath(); x.moveTo(-w/2,-h/2+24); x.lineTo(w/2,-h/2+24); x.stroke();
+      x.strokeStyle='rgba(47,111,208,.22)'; for(var ly=-h/2+62; ly<h/2-6; ly+=38){x.beginPath(); x.moveTo(-w/2,ly); x.lineTo(w/2,ly); x.stroke()}
+      var fs=fitFont(H1,w-90,Math.round(H1SIZE*.8),'700',LAT), yb=-h/2+40+fs*.72; x.fillStyle=NAVY; spaced(H1,0,yb,H1GAP*.6);
+      x.font='400 38px '+DISP; x.fillStyle=BLUE; x.fillText(TTL,0,yb+54); x.font='500 24px '+LAT; x.fillStyle=NAVY; x.fillText(RANGE,0,yb+92)});
+    pins.push([cX+cw/2,cY+16,CORAL]);
+    var sn=Math.min(262,iw-cw-80), sX=ix+iw-sn-28, sY=iy+40;
+    note(sX,sY,sn,sn,.05,'#FFE380',function(w,h){stats2x2(w*.92,h*.88)}); pins.push([sX+sn/2,sY+14,BLUE]);
+    // 底部：撕下来的纸条写那一句话 + 章贴纸
+    var bH=story?190:150, bY=iy+ih-bH;
+    if(line){x.font='400 36px '+DISP; var qw=Math.min(iw-330,x.measureText('「'+line+'」').width+90);
+      torn(ix+34,bY+(bH-92)/2,qw,92,-.02,function(w,h){x.fillStyle=NAVY; x.textAlign='center'; x.textBaseline='middle'; x.font='400 36px '+DISP; x.fillText('「'+line+'」',0,2); x.textBaseline='alphabetic'; tape(-w/2+6,0,70,1.45,MUST); tape(w/2-6,0,70,1.6,MUST)})}
+    var gs=got.slice(-2); gs.forEach(function(p,i){stamp(p,ix+iw-84-i*140,bY+bH/2+(i?8:0),i?54:62,(i?.2:-.2)+(R()-.5)*.2,true)});
+    var top=cY+ch+30, bot=bY-6;
+    if(n){var cs=cells(n,ix+18,top,iw-36,bot-top,.86), route=[];
+      items.forEach(function(o,i){var c=cs[i], ang=(R()-.5)*(n===1?.06:.16), cx=c.x+c.w/2+(R()-.5)*c.w*.06, cy=c.y+c.h/2+(R()-.5)*c.h*.05;
+        var s=print(o,cx,cy,c.w*.92,c.h*.93,ang,{cap:c.w>220}), yl=-s.h/2+14, p=[cx-yl*Math.sin(ang),cy+yl*Math.cos(ang),pc[i%4]]; pins.push(p); route.push(p)});
+      if(n>1){x.strokeStyle='#B3242C'; x.lineWidth=3; x.lineCap='round'; for(var i=1;i<route.length;i++){var a=route[i-1], b=route[i]; x.beginPath(); x.moveTo(a[0],a[1]); x.quadraticCurveTo((a[0]+b[0])/2,(a[1]+b[1])/2+42,b[0],b[1]); x.stroke()} x.lineCap='butt'}
+    } else stampField(ix+40,top,iw-80,bot-top,true,CREAM);
+    pins.forEach(function(p){pin(p[0],p[1],p[2])});
+    return c;
+  }
+
+  /* ===== 场景三：夜里一串串小灯，照片用木夹子晾在绳子上 ===== */
+  function sceneLine(){
+    var g=x.createLinearGradient(0,0,0,Hd); g.addColorStop(0,'#13265A'); g.addColorStop(1,'#2C4E8E'); x.fillStyle=g; x.fillRect(0,0,Wd,Hd);
+    for(var i=0;i<16;i++){x.fillStyle='rgba(255,214,140,'+(.04+R()*.06)+')'; x.beginPath(); x.arc(R()*Wd,R()*Hd,20+R()*70,0,7); x.fill()}
+    var y=story?260:132, n=items.length; x.textAlign='center'; x.font='700 '+H1SIZE+'px '+LAT;
+    x.save(); x.shadowColor='rgba(255,200,90,.75)'; x.shadowBlur=28; x.fillStyle=MUST; spaced(H1,Wd/2,y,H1GAP); x.restore();
+    x.font='400 42px '+DISP; x.fillStyle=CREAM; spaced(TTL,Wd/2,y+62,20); x.font='500 26px '+LAT; x.fillStyle=SKY; spaced(RANGE,Wd/2,y+106,3);
+    var gs=got.slice(-2); if(gs.length) stamp(gs[gs.length-1],Wd-112,y-30,58,.2+(R()-.5)*.2,true); if(gs.length>1) stamp(gs[0],112,y-20,54,-.2+(R()-.5)*.2,true);
+    var fh=story?430:250, fy=Hd-fh, sy=Hd-(story?96:62);
+    if(line){x.font='400 40px '+DISP; x.fillStyle=CREAM; x.textAlign='center'; x.fillText('「'+line+'」',Wd/2,fy+60)}
+    if(story&&got.length){var row=got.slice(-5), gp=(Wd-160)/row.length; row.forEach(function(p,i){stamp(p,80+gp*(i+.5),fy+182,Math.min(64,gp/2-8),(R()-.5)*.4,true)})}
+    var colw=(Wd-120)/4; statsArr().forEach(function(s,i){var cx=60+colw*(i+.5); x.textAlign='center'; x.fillStyle=[MUST,'#FF9A8B',SKY,CREAM][i]; x.font='700 66px '+LAT; x.fillText(s[0],cx,sy-34); x.fillStyle='rgba(255,252,243,.82)'; x.font='500 25px '+BODY; x.fillText(s[1],cx,sy+2)});
+    var top=y+150, bot=fy-(line?4:-34);
+    if(!n){stampField(80,top,Wd-160,bot-top,true,CREAM); return c}
+    var cs=cells(n,50,top,Wd-100,bot-top,.8), rows=cs[0].rows, rowH=cs[0].h, sag=Math.min(46,rowH*.14), half=Wd/2+40;
+    function yAt(r,px){return top+r*rowH+16+sag*(1-Math.pow((px-Wd/2)/half,2))}
+    function slope(px){return -2*sag*(px-Wd/2)/(half*half)}
+    for(var r=0;r<rows;r++){x.strokeStyle='rgba(240,228,200,.9)'; x.lineWidth=2.4; x.beginPath(); for(var px=-40; px<=Wd+40; px+=20){var yy=yAt(r,px); px===-40?x.moveTo(px,yy):x.lineTo(px,yy)} x.stroke();
+      for(var bx=-6,k=0; bx<Wd+10; bx+=58,k++){var by2=yAt(r,bx)+9, gl=x.createRadialGradient(bx,by2,0,bx,by2,24); gl.addColorStop(0,'rgba(255,215,130,.8)'); gl.addColorStop(1,'rgba(255,215,130,0)'); x.fillStyle=gl; x.beginPath(); x.arc(bx,by2,24,0,7); x.fill();
+        x.strokeStyle='rgba(240,228,200,.8)'; x.lineWidth=1.5; x.beginPath(); x.moveTo(bx,by2-9); x.lineTo(bx,by2-4); x.stroke(); x.fillStyle=['#FFEBB0','#FFD27E','#FFC3AA'][k%3]; x.beginPath(); x.arc(bx,by2,5.5,0,7); x.fill()}}
+    items.forEach(function(o,i){var c=cs[i], ax=c.x+c.w/2+(R()-.5)*c.w*.06, ay=yAt(c.row,ax), mh=c.h-sag-30, mw=c.w*.9, s=psize(o,mw,mh,c.w>210), ang=Math.atan(slope(ax))*.9+(R()-.5)*.07, d=s.h/2-8;
+      var px2=ax-d*Math.sin(ang), py2=ay+d*Math.cos(ang); print(o,px2,py2,mw,mh,ang,{cap:c.w>210,sa:.55,blur:22,dy:12});
+      // 宽的照片用两个夹子
+      (s.w>360?[-s.w*.3,s.w*.3]:[0]).forEach(function(lx){var ly=-s.h/2+8; peg(px2+lx*Math.cos(ang)-ly*Math.sin(ang),py2+lx*Math.sin(ang)+ly*Math.cos(ang)-6,ang)})});
+    return c;
+  }
   // 拍立得：一排排摆好，最多 12 张（多了就小一点、窄的不写地名）
   function polaWall(){
     var n=items.length, tall=Hc/Wc>1.05, rows={1:[1],2:tall?[1,1]:[2],3:[1,2],4:[2,2],5:[2,3],6:tall?[2,2,2]:[3,3],7:[3,4],8:[4,4],9:[3,3,3],10:[3,4,3],11:[4,3,4],12:[4,4,4]}[n];
@@ -1300,42 +1440,9 @@ function drawRecap(fmt,items,got,line,seed,style){
     rows.forEach(function(k,ri){var rh=Hc*wts[ri]/tw, cw=Wc/k; for(var j=0;j<k;j++){polaroid(items[idx++],X+cw*j,cy,cw,rh,(R()-.5)*(n===1?.035:.075),m)} cy+=rh});
     if(!story&&got.length&&n<=6){var last=got.slice(-2); stamp(last[last.length-1],X+Wc-78,Y+Hc-74,76,-.22+(R()-.5)*.2,true); if(last.length>1&&n>1) stamp(last[0],X+80,Y+78,68,.2+(R()-.5)*.2,true)}
   }
-  // 照片墙：白板上整齐拼起来，第一张最大
-  function gridWall(){
-    var n=items.length, rows={1:[1],2:Hc/Wc>1.05?[1,1]:[2],3:[1,2],4:[1,3],5:[2,3],6:[2,4],7:[1,3,3],8:[2,3,3],9:[3,3,3],10:[2,4,4],11:[3,4,4],12:[4,4,4]}[n];
-    var P=16, g=10, wts=rows.map(function(k){return Math.pow(1/k,.75)}), tw=wts.reduce(sum,0), avail=Hc-P*2-g*(rows.length-1), cy=Y+P, idx=0;
-    x.fillStyle=NAVY; x.fillRect(X+10,Y+10,Wc,Hc); x.fillStyle='#fff'; x.fillRect(X,Y,Wc,Hc); x.strokeStyle=NAVY; x.lineWidth=4; x.strokeRect(X,Y,Wc,Hc);
-    rows.forEach(function(k,ri){var rh=avail*wts[ri]/tw, cw=(Wc-P*2-g*(k-1))/k;
-      for(var j=0;j<k;j++){var fx=X+P+j*(cw+g); photo(items[idx++],fx,cy,cw,rh); x.strokeStyle=NAVY; x.lineWidth=2.5; x.strokeRect(fx,cy,cw,rh)} cy+=rh+g});
-    if(!story&&got.length) stamp(got[got.length-1],X+Wc-62,Y+Hc-58,66,-.22+(R()-.5)*.2,true);
-  }
-  // 胶片：一条条底片，带齿孔和格数
-  function filmStrips(){
-    var n=items.length, per=n<=3?n:n<=8?Math.ceil(n/2):Math.ceil(n/3), strips=Math.ceil(n/per), g=24, sh=(Hc-g*(strips-1))/strips, idx=0, no=1;
-    var hole=Math.max(8,Math.min(16,sh*.06)), band=hole*2.6, fg=hole*1.2, fw=(Wc-fg*(per+1))/per, fh=sh-band*2;
-    for(var s2=0;s2<strips;s2++){
-      var k=Math.min(per,n-idx), w=fg*(k+1)+fw*k, h=sh;
-      x.save(); x.translate(X+Wc/2,Y+s2*(sh+g)+sh/2); x.rotate((R()-.5)*.04);
-      x.fillStyle=NAVY; x.fillRect(-w/2+8,-h/2+8,w,h); x.fillStyle='#10295A'; x.fillRect(-w/2,-h/2,w,h);
-      x.fillStyle=CREAM; for(var hx=-w/2+hole*.8; hx<w/2-hole*1.6; hx+=hole*2.2){x.fillRect(hx,-h/2+band/2-hole*.45,hole*1.1,hole*.9); x.fillRect(hx,h/2-band/2-hole*.45,hole*1.1,hole*.9)}
-      for(var j=0;j<k;j++){var fx=-w/2+fg+j*(fw+fg); photo(items[idx++],fx,-h/2+band,fw,fh);
-        x.fillStyle=MUST; x.textAlign='left'; x.textBaseline='middle'; x.font='700 '+Math.round(hole*1.15)+'px '+LAT; x.fillText('▸ '+(no++)+'A',fx+2,h/2-band*.2)}
-      x.textBaseline='alphabetic'; x.restore();
-    }
-    if(!story&&got.length) stamp(got[got.length-1],X+Wc-60,Y+Hc-50,64,-.22+(R()-.5)*.2,true);
-  }
-  // 手帐：拍立得随手贴上去，歪一点、叠一点，上面贴胶带
-  function scrapbook(){
-    var n=items.length, cols=Math.max(1,Math.round(Math.sqrt(n*Wc/Hc))), rws=Math.ceil(n/cols), cw=Wc/cols, ch=Hc/rws, grow=n===1?1:1.2, m=n>6?10:16, cols3=[MUST,CORAL,SKY];
-    for(var i=0;i<n;i++){
-      var r=Math.floor(i/cols), inRow=Math.min(cols,n-r*cols), off=(Wc-inRow*cw)/2, w=cw*grow, h=ch*grow, ang=(R()-.5)*(n===1?.08:.34);
-      var cx=X+off+cw*(i%cols)-(w-cw)/2+(R()-.5)*cw*.14, cy=Y+ch*r-(h-ch)/2+(R()-.5)*ch*.14;
-      cx=Math.max(X-14,Math.min(X+Wc-w+14,cx)); cy=Math.max(Y-12,Math.min(Y+Hc-h+12,cy));
-      polaroid(items[i],cx,cy,w,h,ang,m);
-      var hi=(h-m*2)/2, tw2=Math.min(130,(w-m*2)*.42); tape(cx+w/2+hi*Math.sin(ang),cy+h/2-hi*Math.cos(ang),tw2,ang+(R()-.5)*.35,cols3[i%3]);
-    }
-    if(!story&&got.length){var sr=Math.min(70,Math.min(cw,ch)*.3); stamp(got[got.length-1],X+Wc-sr-6,Y+Hc-sr-4,sr,-.22+(R()-.5)*.2,true); if(got.length>1&&n>2) stamp(got[0],X+sr+6,Y+Hc-sr-4,sr*.9,.2+(R()-.5)*.2,true)}
-  }
+  // 手帐本 / 软木板 / 晾照片：整张图换成那个场景
+  items=items.slice(0,RC_MAX);
+  if(style==='book') return sceneBook(); if(style==='cork') return sceneCork(); if(style==='line') return sceneLine();
   // 底色与圆点
   x.fillStyle=MUST; x.fillRect(0,0,Wd,Hd); x.fillStyle='rgba(23,58,122,.13)';
   for(var dy=14;dy<Hd;dy+=28) for(var dx=14;dx<Wd;dx+=28){x.beginPath(); x.arc(dx,dy,2.6,0,7); x.fill()}
@@ -1364,8 +1471,7 @@ function drawRecap(fmt,items,got,line,seed,style){
   // 主体
   var X=ix+22, Y=top, Wc=iw-44, Hc=bottom-top;
   if(items.length){
-    items=items.slice(0,RC_MAX);
-    if(style==='grid') gridWall(); else if(style==='film') filmStrips(); else if(style==='scrap') scrapbook(); else polaWall();
+    polaWall();
   } else if(got.length){
     var show=got.slice(-12), cols=show.length<=4?2:show.length<=9?3:4, rws=Math.ceil(show.length/cols), cw2=Wc/cols, ch2=Hc/rws, r2=Math.min(cw2,ch2)/2-16;
     show.forEach(function(p,i){var rowN=Math.floor(i/cols), inRow=Math.min(cols,show.length-rowN*cols), off=(Wc-inRow*cw2)/2; stamp(p,X+off+cw2*(i%cols+.5),Y+ch2*(rowN+.5),r2,(hash(p.id)%25-12)/57+(R()-.5)*.1)});
